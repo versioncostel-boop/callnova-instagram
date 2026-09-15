@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: callnova-instagram-bot
+    runtime: docker
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: OPENAI_MODEL
+        value: gpt-5.6
+      - key: META_VERIFY_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: INSTAGRAM_PAGE_ACCESS_TOKEN
+        sync: false
+      - key: INSTAGRAM_ACCOUNT_ID
+        sync: false
+      - key: INSTAGRAM_API_VERSION
+        value: v24.0
+      - key: EMAIL_NOTIFICATION_TO
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 465
+      - key: SMTP_SECURE
+        value: true
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_APP_PASSWORD
+        sync: false
+      - key: BANK_IBAN
+        sync: false
+      - key: BANK_ACCOUNT_NAME
+        sync: false
