@@ -29,7 +29,7 @@ function fallbackReply(messages) {
     return 'Her bileziğimiz 450 TL’dir, 5 adet ve üzeri siparişlerde %10, 10 adet ve üzeri siparişlerde %15 indirim uygulanır. ✨';
   }
   if (/sol|karar|renk|paslan|çelik|celik|kalite/.test(text)) {
-    return 'Bileziklerimiz 22 ayar altın kaplama paslanmaz çeliktir, renk akıtma ve solma yapmaz efendim. ✨';
+    return 'Efendim ürünlerimiz kendi üretimimizdir; 22 ayar altın kaplama ve paslanmaz çelik altyapı kullanıyoruz. ✨ Günlük kullanıma dayanıklıdır, kararma, solma veya boya atması yapmaz. ✨ Görünüm olarak gerçek altından gözle ayırt edilmesi çok zordur; net ayrım profesyonel testle yapılır, ürünümüzün altın kaplama olduğunu şeffafça belirtiyoruz. ✨';
   }
   if (/ödeme|odeme|kapıda|kapida|kart|nakit|iban|havale|eft/.test(text)) {
     return 'Kapıda kart, kapıda nakit ve havale/EFT ile ödeme seçeneklerimiz mevcuttur. 💳';

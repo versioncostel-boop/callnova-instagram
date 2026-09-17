@@ -4,6 +4,7 @@ import path from 'node:path';
 const dataDir = path.resolve('data');
 const conversationsFile = path.join(dataDir, 'conversations.json');
 const leadsFile = path.join(dataDir, 'leads.json');
+const handledCommentsFile = path.join(dataDir, 'handled-comments.json');
 
 async function readJson(file, fallback) {
   try { return JSON.parse(await readFile(file, 'utf8')); } catch { return fallback; }
@@ -54,4 +55,14 @@ export async function getDailyReportData(startIso, endIso) {
     purchased: purchasedIds.size,
     messages: spokenTo.reduce((total, [, conversation]) => total + (conversation.messages || []).filter((message) => message.role === 'user' && message.at >= startIso && message.at < endIso).length, 0)
   };
+}
+
+export async function getHandledCommentIds() {
+  return new Set(await readJson(handledCommentsFile, []));
+}
+
+export async function rememberHandledCommentId(commentId) {
+  const ids = await readJson(handledCommentsFile, []);
+  if (!ids.includes(commentId)) ids.push(commentId);
+  await writeJson(handledCommentsFile, ids.slice(-5000));
 }

@@ -22,3 +22,27 @@ export async function sendInstagramCommentPrivateReply(commentId, text) {
   });
   if (!response.ok) throw new Error(`Instagram yorum özel yanıtı gönderilemedi: ${response.status}`);
 }
+
+export async function listRecentInstagramComments(limit = 500) {
+  if (!config.instagramAccountId) return [];
+  const headers = { authorization: `Bearer ${config.instagramAccessToken}` };
+  const comments = [];
+  let mediaUrl = `https://graph.instagram.com/${config.instagramApiVersion}/${config.instagramAccountId}/media?fields=id&limit=25`;
+  while (mediaUrl && comments.length < limit) {
+    const mediaResponse = await fetch(mediaUrl, { headers });
+    if (!mediaResponse.ok) throw new Error(`Instagram medya listesi alınamadı: ${mediaResponse.status}`);
+    const mediaPayload = await mediaResponse.json();
+    for (const item of mediaPayload.data || []) {
+      let commentsUrl = `https://graph.instagram.com/${config.instagramApiVersion}/${item.id}/comments?fields=id,text,from,timestamp&limit=50`;
+      while (commentsUrl && comments.length < limit) {
+        const response = await fetch(commentsUrl, { headers });
+        if (!response.ok) break;
+        const commentPayload = await response.json();
+        comments.push(...(commentPayload.data || []));
+        commentsUrl = commentPayload.paging?.next || null;
+      }
+    }
+    mediaUrl = mediaPayload.paging?.next || null;
+  }
+  return comments.slice(0, limit);
+}
