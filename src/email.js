@@ -18,6 +18,7 @@ export async function sendDailyReport(report, reportDate) {
       `Konuşulan kişi: ${report.spokenTo}`,
       `Sıcak müşteri: ${report.hot}`,
       `Soğuk müşteri: ${report.cold}`,
+      `Kararsız / yalnızca bilgi alan: ${report.neutral}`,
       `Satın alan: ${report.purchased}`,
       `Toplam müşteri mesajı: ${report.messages}`
     ].join('\n')
@@ -37,7 +38,8 @@ export function leadEmailContent(lead) {
       `Durum: ${statusLabels[lead.status] || lead.status || 'Yeni müşteri'}`,
       `Ad soyad: ${lead.name || 'Belirtilmedi'}`,
       `Telefon: ${lead.phone || 'Belirtilmedi'}`,
-      `Instagram kullanıcı kimliği: ${lead.instagramUserId}`,
+      `Instagram kullanıcı adı: ${lead.instagramUsername ? `@${lead.instagramUsername}` : 'Alınamadı'}`,
+      `Instagram kullanıcı kimliği: ${lead.instagramUserId || 'Alınamadı'}`,
       lead.issue ? `Teyit gereken konu: ${lead.issue}` : '',
       `Kaynak: ${lead.source || 'instagram_dm'}`,
       `Kayıt zamanı: ${lead.createdAt || new Date().toISOString()}`

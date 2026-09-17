@@ -46,15 +46,31 @@ export async function getDailyReportData(startIso, endIso) {
     return messages.some((message) => message.role === 'user' && message.at >= startIso && message.at < endIso);
   });
   const dailyLeads = leads.filter((lead) => lead.createdAt >= startIso && lead.createdAt < endIso);
-  const hotIds = new Set(dailyLeads.filter((lead) => ['order_intent', 'payment_pending', 'receipt_reported', 'human_followup'].includes(lead.status)).map((lead) => lead.instagramUserId));
+  const temperatureByUser = new Map(spokenTo.map(([userId, conversation]) => [userId, classifyTemperature(conversation.messages, startIso, endIso)]));
+  for (const lead of dailyLeads) {
+    if (['order_intent', 'payment_pending', 'receipt_reported'].includes(lead.status)) temperatureByUser.set(lead.instagramUserId, 'hot');
+  }
+  const hotIds = new Set([...temperatureByUser].filter(([, temperature]) => temperature === 'hot').map(([userId]) => userId));
+  const coldIds = new Set([...temperatureByUser].filter(([, temperature]) => temperature === 'cold').map(([userId]) => userId));
   const purchasedIds = new Set(dailyLeads.filter((lead) => lead.status === 'receipt_reported').map((lead) => lead.instagramUserId));
   return {
     spokenTo: spokenTo.length,
     hot: hotIds.size,
-    cold: Math.max(0, spokenTo.length - hotIds.size),
+    cold: coldIds.size,
+    neutral: Math.max(0, spokenTo.length - hotIds.size - coldIds.size),
     purchased: purchasedIds.size,
     messages: spokenTo.reduce((total, [, conversation]) => total + (conversation.messages || []).filter((message) => message.role === 'user' && message.at >= startIso && message.at < endIso).length, 0)
   };
+}
+
+function classifyTemperature(messages, startIso, endIso) {
+  const dailyTexts = (messages || [])
+    .filter((message) => message.role === 'user' && message.at >= startIso && message.at < endIso)
+    .map((message) => message.text.toLocaleLowerCase('tr-TR'));
+  const lastText = dailyTexts.at(-1) || '';
+  if (/istemiyorum|gerek yok|vazgeç|vazgec|almayacağım|almayacagim|pahalı|pahali/.test(lastText)) return 'cold';
+  if (dailyTexts.some((text) => /fiyat|kaç tl|ne kadar|adet|tane|sipariş|siparis|iban|ödeme|odeme|kapıda|kapida|kargo|indirim|ölçü|olcu|model|fotoğraf|fotograf/.test(text))) return 'hot';
+  return 'neutral';
 }
 
 export async function getHandledCommentIds() {

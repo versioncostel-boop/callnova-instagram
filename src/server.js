@@ -4,7 +4,7 @@ import { config, assertRuntimeConfig } from './config.js';
 import { createReply } from './ai.js';
 import { saveLead } from './crm.js';
 import { sendDailyReport } from './email.js';
-import { listRecentInstagramComments, sendInstagramCommentPrivateReply, sendInstagramMessage } from './instagram.js';
+import { getInstagramProfile, listRecentInstagramComments, sendInstagramCommentPrivateReply, sendInstagramMessage } from './instagram.js';
 import { commentWelcomeMessage } from './knowledge.js';
 import { purchaseStage, requestedPhotos, updateContact } from './lead.js';
 import { findSizeSuggestion } from './size.js';
@@ -55,16 +55,23 @@ async function handleMessage(senderId, text) {
     if (!/ekibimiz|ekip arkadaşlarımız|geri dönüş/i.test(reply)) {
       reply = `${reply} Ekibimiz konuyu kontrol edip size geri dönüş sağlayacak. 📩`;
     }
-    await saveLead({
-      instagramUserId: senderId,
-      name: conversation.contact.name || '',
-      phone: conversation.contact.phone || '',
-      source: 'instagram_dm',
-      requested: 'human_followup',
-      status: 'human_followup',
-      issue: text,
-      createdAt: new Date().toISOString()
-    });
+    conversation.teamFollowupNotifications ??= 0;
+    if (conversation.teamFollowupNotifications < 2) {
+      const profile = await getInstagramProfile(senderId).catch(() => ({}));
+      await saveLead({
+        instagramUserId: senderId,
+        instagramUsername: profile.username || conversation.instagramUsername || '',
+        name: conversation.contact.name || '',
+        phone: conversation.contact.phone || '',
+        source: 'instagram_dm',
+        requested: 'human_followup',
+        status: 'human_followup',
+        issue: text,
+        createdAt: new Date().toISOString()
+      });
+      conversation.instagramUsername = profile.username || conversation.instagramUsername || '';
+      conversation.teamFollowupNotifications += 1;
+    }
   }
   conversation.messages = [...conversation.messages, { role: 'assistant', text: reply, at: new Date().toISOString() }].slice(-8);
 

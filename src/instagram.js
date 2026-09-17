@@ -23,6 +23,14 @@ export async function sendInstagramCommentPrivateReply(commentId, text) {
   if (!response.ok) throw new Error(`Instagram yorum özel yanıtı gönderilemedi: ${response.status}`);
 }
 
+export async function getInstagramProfile(userId) {
+  if (!userId) return {};
+  const url = `https://graph.instagram.com/${config.instagramApiVersion}/${userId}?fields=id,username,name`;
+  const response = await fetch(url, { headers: { authorization: `Bearer ${config.instagramAccessToken}` } });
+  if (!response.ok) return {};
+  return response.json();
+}
+
 export async function listRecentInstagramComments(limit = 500) {
   if (!config.instagramAccountId) return [];
   const headers = { authorization: `Bearer ${config.instagramAccessToken}` };

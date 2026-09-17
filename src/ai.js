@@ -38,7 +38,7 @@ function fallbackReply(messages) {
     return 'Her ölçümüz mevcuttur efendim, en uygun seçim için boyunuzu ve kilonuzu yazarsanız tahmini yönlendirme yapabiliriz. 📏';
   }
   if (/fotoğraf|fotograf|görsel|gorsel|resim/.test(text)) {
-    return 'Görselleri WhatsApp üzerinden iletebilmemiz için ad soyad ve telefon numaranızı paylaşabilir misiniz? 📷';
+    return 'Elbette efendim, hangi modeli incelemek istediğinizi yazarsanız detaylı fotoğraf konusunda yardımcı olalım. 📷';
   }
   if (/site|web|internet/.test(text)) {
     return 'Web sitemiz şu anda tadilatta, yarın sabah yeniden yayında olacaktır. 🌐';
