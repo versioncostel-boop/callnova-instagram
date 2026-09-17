@@ -4,7 +4,7 @@ import { config, assertRuntimeConfig } from './config.js';
 import { createReply } from './ai.js';
 import { saveLead } from './crm.js';
 import { sendDailyReport } from './email.js';
-import { getInstagramProfile, listRecentInstagramComments, sendInstagramCommentPrivateReply, sendInstagramMessage } from './instagram.js';
+import { getInstagramProfile, sendInstagramCommentPrivateReply, sendInstagramCommentReply, sendInstagramMessage } from './instagram.js';
 import { commentWelcomeMessage } from './knowledge.js';
 import { purchaseStage, requestedPhotos, updateContact } from './lead.js';
 import { findSizeSuggestion } from './size.js';
@@ -124,19 +124,14 @@ async function queueCommentPrivateReply(commentId, commenterId, commentText = ''
     }
 
     commentReplyTimestamps.push(now);
-    sendInstagramCommentPrivateReply(commentId, commentWelcomeMessage)
+    Promise.all([
+      sendInstagramCommentReply(commentId, 'DM’den bilgi verilmiştir. ✨'),
+      sendInstagramCommentPrivateReply(commentId, commentWelcomeMessage)
+    ])
       .then(() => rememberHandledCommentId(commentId))
       .catch(console.error);
   };
   setTimeout(sendWhenAllowed, replyDelayMs);
-}
-
-async function scanUnansweredComments() {
-  const comments = await listRecentInstagramComments();
-  for (const comment of comments) {
-    await queueCommentPrivateReply(comment.id, comment.from?.id, comment.text || '');
-  }
-  console.log(`Cevapsız yorum taraması tamamlandı: ${comments.length} yorum kontrol edildi.`);
 }
 
 const server = createServer(async (request, response) => {
@@ -213,6 +208,5 @@ server.listen(config.port, () => {
   scheduleDailyReport();
   getHandledCommentIds()
     .then((ids) => ids.forEach((id) => handledCommentIds.add(id)))
-    .then(() => setTimeout(() => scanUnansweredComments().catch((error) => console.error('Yorum taraması başarısız:', error)), 5_000))
     .catch((error) => console.error('Yorum geçmişi okunamadı:', error));
 });
