@@ -50,7 +50,7 @@ function fallbackReply(messages) {
   if (/site|web|internet/.test(text)) {
     return 'Web sitemiz şu anda tadilatta, yarın sabah yeniden yayında olacaktır. 🌐';
   }
-  if (/mağaza|magaza|showroom|adres|nerede/.test(text)) {
+  if (/mağaza|magaza|showroom|adres|nerede|neredesiniz|işletme.*yer|isletme.*yer|işletme.*konum|isletme.*konum|fiziksel.*yer|fiziksel.*konum|ziyaret/.test(text)) {
     return 'Fiziksel mağazamız yoktur, üretim depo ve showroomumuz bulunur; satışlarımız yalnızca internet üzerindendir. 🛍️';
   }
   if (/kolye|küpe|kupe|yüzük|yuzuk|başka ürün|baska urun/.test(text)) {
