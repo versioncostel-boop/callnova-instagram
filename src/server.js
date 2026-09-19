@@ -180,6 +180,11 @@ const server = createServer(async (request, response) => {
     }
     response.writeHead(200); response.end('EVENT_RECEIVED');
     const payload = JSON.parse(raw.toString('utf8'));
+    const eventSummary = (payload.entry || []).flatMap((entry) => [
+      ...(entry.messaging || []).map(() => 'messaging'),
+      ...(entry.changes || []).map((change) => change.field || 'change')
+    ]);
+    console.log(`Webhook doğrulandı: ${eventSummary.join(', ') || 'boş event'}`);
     for (const entry of payload.entry || []) {
       for (const event of entry.messaging || []) {
         acceptIncomingMessage(event);
