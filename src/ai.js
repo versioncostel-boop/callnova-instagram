@@ -18,6 +18,14 @@ function extractChatCompletionText(payload) {
   return '';
 }
 
+function extractGeminiText(payload) {
+  return (payload.candidates || [])
+    .flatMap((candidate) => candidate.content?.parts || [])
+    .map((part) => part.text || '')
+    .join('\n')
+    .trim();
+}
+
 function fallbackReply(messages) {
   const text = messages.at(-1)?.text?.trim().toLocaleLowerCase('tr-TR') || '';
   if (/^(selam|slm|merhaba|sa|selamlar|hey)[!?. ]*$/.test(text)) {
@@ -132,8 +140,41 @@ async function createGroqReply(messages, instructions) {
   return extractChatCompletionText(await response.json());
 }
 
+async function createGeminiReply(messages, instructions) {
+  let response;
+  try {
+    response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel}:generateContent`, {
+      method: 'POST',
+      headers: { 'x-goog-api-key': config.geminiApiKey, 'content-type': 'application/json' },
+      signal: AbortSignal.timeout(15_000),
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: instructions }] },
+        contents: messages.map((message) => ({
+          role: message.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: message.text }]
+        })),
+        generationConfig: { temperature: 0.25, maxOutputTokens: 140 },
+        thinkingConfig: { thinkingLevel: 'low' }
+      })
+    });
+  } catch (error) {
+    console.error(`Gemini isteği zaman aşımına uğradı veya bağlanamadı: ${error.message}`);
+    return '';
+  }
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    console.error(`Gemini isteği başarısız: ${response.status} ${errorBody.slice(0, 300)}`);
+    return '';
+  }
+  return extractGeminiText(await response.json());
+}
+
 export async function createReply(messages, photoRequested, contact, sizeSuggestion) {
   const instructions = contextFor(photoRequested, contact, sizeSuggestion);
+  if (config.geminiApiKey) {
+    const geminiReply = await createGeminiReply(messages, instructions);
+    return geminiReply || fallbackReply(messages);
+  }
   if (config.groqApiKey) {
     const groqReply = await createGroqReply(messages, instructions);
     return groqReply || fallbackReply(messages);
