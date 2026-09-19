@@ -9,7 +9,10 @@ export async function sendInstagramMessage(recipientId, text) {
     headers: { 'content-type': 'application/json', authorization: `Bearer ${config.instagramAccessToken}` },
     body: JSON.stringify({ recipient: { id: recipientId }, message: { text } })
   });
-  if (!response.ok) throw new Error(`Instagram mesajı gönderilemedi: ${response.status}`);
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Instagram mesajı gönderilemedi: ${response.status} ${body.slice(0, 500)}`);
+  }
 }
 
 export async function sendInstagramCommentPrivateReply(commentId, text) {
