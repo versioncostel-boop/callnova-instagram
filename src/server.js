@@ -92,9 +92,12 @@ async function handleMessage(senderId, text) {
 
   await saveConversation(senderId, conversation);
   await sendInstagramMessage(senderId, reply);
+  console.log(`DM yanıtlandı: ${senderId}`);
 }
 
 function queueIncomingMessage(senderId, text) {
+  if (!senderId || !text?.trim()) return;
+  console.log(`DM alındı: ${senderId}`);
   const pending = pendingMessages.get(senderId) || { texts: [], timer: null };
   pending.texts.push(text);
   clearTimeout(pending.timer);
@@ -103,6 +106,19 @@ function queueIncomingMessage(senderId, text) {
     handleMessage(senderId, pending.texts.join('\n')).catch(console.error);
   }, replyDelayMs);
   pendingMessages.set(senderId, pending);
+}
+
+function acceptIncomingMessage(event) {
+  const message = event.message || event.value?.message;
+  const senderId = event.sender?.id || event.value?.sender?.id || event.value?.from?.id || event.value?.sender_id;
+  const messageId = message?.mid || message?.id || event.message_id;
+  if (!message?.text || event.message?.is_echo || event.value?.message?.is_echo) return;
+  if (messageId && handledMessageIds.has(messageId)) return;
+  if (messageId) {
+    handledMessageIds.add(messageId);
+    if (handledMessageIds.size > 5000) handledMessageIds.clear();
+  }
+  queueIncomingMessage(senderId, message.text);
 }
 
 async function queueCommentPrivateReply(commentId, commenterId, commentText = '') {
@@ -158,24 +174,21 @@ const server = createServer(async (request, response) => {
   }
   if (request.method === 'POST' && url.pathname === '/webhook') {
     const raw = await readBody(request);
-    if (!verifySignature(raw, request.headers['x-hub-signature-256'])) { response.writeHead(401); return response.end(); }
+    if (!verifySignature(raw, request.headers['x-hub-signature-256'])) {
+      console.error('Webhook imzası reddedildi. META_APP_SECRET kontrol edilmeli.');
+      response.writeHead(401); return response.end();
+    }
     response.writeHead(200); response.end('EVENT_RECEIVED');
     const payload = JSON.parse(raw.toString('utf8'));
     for (const entry of payload.entry || []) {
       for (const event of entry.messaging || []) {
-        const messageId = event.message?.mid;
-        if (event.message?.text && !event.message.is_echo && (!messageId || !handledMessageIds.has(messageId))) {
-          if (messageId) {
-            handledMessageIds.add(messageId);
-            if (handledMessageIds.size > 5000) handledMessageIds.clear();
-          }
-          queueIncomingMessage(event.sender.id, event.message.text);
-        }
+        acceptIncomingMessage(event);
       }
       for (const change of entry.changes || []) {
         if (change.field === 'comments' && change.value?.id) {
           queueCommentPrivateReply(change.value.id, change.value.from?.id, change.value.text || '').catch(console.error);
         }
+        if (change.field === 'messages') acceptIncomingMessage(change);
       }
     }
     return;
