@@ -19,8 +19,10 @@ function extractChatCompletionText(payload) {
 }
 
 function extractGeminiText(payload) {
-  return (payload.candidates || [])
-    .flatMap((candidate) => candidate.content?.parts || [])
+  if (payload.output_text?.trim()) return payload.output_text.trim();
+  return (payload.steps || [])
+    .filter((step) => step.type === 'model_output')
+    .flatMap((step) => step.content || [])
     .map((part) => part.text || '')
     .join('\n')
     .trim();
@@ -143,20 +145,18 @@ async function createGroqReply(messages, instructions) {
 async function createGeminiReply(messages, instructions, model = config.geminiModel) {
   let response;
   try {
-    response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
       method: 'POST',
       headers: { 'x-goog-api-key': config.geminiApiKey, 'content-type': 'application/json' },
       signal: AbortSignal.timeout(15_000),
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: instructions }] },
-        contents: messages.map((message) => ({
-          role: message.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: message.text }]
-        })),
-        generationConfig: {
+        model,
+        store: false,
+        system_instruction: instructions,
+        input: messages.map((message) => `${message.role === 'assistant' ? 'Satış temsilcisi' : 'Müşteri'}: ${message.text}`).join('\n'),
+        generation_config: {
           temperature: 0.25,
-          maxOutputTokens: 140,
-          thinkingConfig: { thinkingLevel: 'low' }
+          max_output_tokens: 140
         }
       })
     });
@@ -177,8 +177,8 @@ export async function createReply(messages, photoRequested, contact, sizeSuggest
   if (config.geminiApiKey) {
     const geminiReply = await createGeminiReply(messages, instructions);
     if (geminiReply) return geminiReply;
-    if (config.geminiModel !== 'gemini-2.5-flash-lite') {
-      const liteReply = await createGeminiReply(messages, instructions, 'gemini-2.5-flash-lite');
+    if (config.geminiModel !== 'gemini-3.5-flash-lite') {
+      const liteReply = await createGeminiReply(messages, instructions, 'gemini-3.5-flash-lite');
       if (liteReply) return liteReply;
     }
     return fallbackReply(messages);
