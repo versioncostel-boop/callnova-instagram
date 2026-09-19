@@ -5,7 +5,7 @@ export const config = {
   openAiApiKey: process.env.OPENAI_API_KEY,
   openAiModel: process.env.OPENAI_MODEL || 'gpt-5.6',
   nvidiaApiKey: process.env.NVIDIA_API_KEY,
-  nvidiaModel: process.env.NVIDIA_MODEL || 'meta/llama-3.3-70b-instruct',
+  nvidiaModel: process.env.NVIDIA_MODEL || 'z-ai/glm-5.3',
   metaVerifyToken: process.env.META_VERIFY_TOKEN,
   metaAppSecret: process.env.META_APP_SECRET,
   instagramAccessToken: process.env.INSTAGRAM_PAGE_ACCESS_TOKEN,
