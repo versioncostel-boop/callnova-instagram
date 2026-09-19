@@ -75,11 +75,11 @@ async function createNvidiaReply(messages, instructions) {
     response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: { authorization: `Bearer ${config.nvidiaApiKey}`, 'content-type': 'application/json' },
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(25_000),
       body: JSON.stringify({
         model: config.nvidiaModel,
         temperature: 0.25,
-        max_tokens: 220,
+        max_tokens: 140,
         messages: [
           { role: 'system', content: instructions },
           ...messages.map((message) => ({ role: message.role, content: message.text }))
