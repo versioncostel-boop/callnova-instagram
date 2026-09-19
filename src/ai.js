@@ -98,8 +98,41 @@ async function createNvidiaReply(messages, instructions) {
   return extractChatCompletionText(await response.json());
 }
 
+async function createGroqReply(messages, instructions) {
+  let response;
+  try {
+    response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${config.groqApiKey}`, 'content-type': 'application/json' },
+      signal: AbortSignal.timeout(12_000),
+      body: JSON.stringify({
+        model: config.groqModel,
+        temperature: 0.25,
+        max_completion_tokens: 140,
+        messages: [
+          { role: 'system', content: instructions },
+          ...messages.map((message) => ({ role: message.role, content: message.text }))
+        ]
+      })
+    });
+  } catch (error) {
+    console.error(`Groq isteği zaman aşımına uğradı veya bağlanamadı: ${error.message}`);
+    return '';
+  }
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    console.error(`Groq isteği başarısız: ${response.status} ${errorBody.slice(0, 300)}`);
+    return '';
+  }
+  return extractChatCompletionText(await response.json());
+}
+
 export async function createReply(messages, photoRequested, contact, sizeSuggestion) {
   const instructions = contextFor(photoRequested, contact, sizeSuggestion);
+  if (config.groqApiKey) {
+    const groqReply = await createGroqReply(messages, instructions);
+    return groqReply || fallbackReply(messages);
+  }
   if (config.nvidiaApiKey) {
     const nvidiaReply = await createNvidiaReply(messages, instructions);
     return nvidiaReply || fallbackReply(messages);

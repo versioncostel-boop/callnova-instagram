@@ -9,6 +9,10 @@ services:
         value: 3000
       - key: OPENAI_MODEL
         value: gpt-5.6
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
       - key: NVIDIA_API_KEY
         sync: false
       - key: NVIDIA_MODEL

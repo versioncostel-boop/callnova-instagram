@@ -4,6 +4,8 @@ export const config = {
   port: Number(process.env.PORT || 3000),
   openAiApiKey: process.env.OPENAI_API_KEY,
   openAiModel: process.env.OPENAI_MODEL || 'gpt-5.6',
+  groqApiKey: process.env.GROQ_API_KEY,
+  groqModel: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
   nvidiaApiKey: process.env.NVIDIA_API_KEY,
   nvidiaModel: process.env.NVIDIA_MODEL || 'deepseek-ai/deepseek-v4-flash-0731',
   metaVerifyToken: process.env.META_VERIFY_TOKEN,
@@ -25,7 +27,7 @@ export const config = {
 
 export function assertRuntimeConfig() {
   const required = [
-    ['OPENAI_API_KEY veya NVIDIA_API_KEY', config.openAiApiKey || config.nvidiaApiKey],
+    ['GROQ_API_KEY, OPENAI_API_KEY veya NVIDIA_API_KEY', config.groqApiKey || config.openAiApiKey || config.nvidiaApiKey],
     ['META_VERIFY_TOKEN', config.metaVerifyToken],
     ['META_APP_SECRET', config.metaAppSecret],
     ['INSTAGRAM_PAGE_ACCESS_TOKEN', config.instagramAccessToken]
