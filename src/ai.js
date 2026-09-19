@@ -161,7 +161,7 @@ async function createGeminiReply(messages, instructions, model = config.geminiMo
         input: messages.map((message) => `${message.role === 'assistant' ? 'Satış temsilcisi' : 'Müşteri'}: ${message.text}`).join('\n'),
         generation_config: {
           temperature: 0.25,
-          max_output_tokens: 220
+          max_output_tokens: 100
         }
       })
     });
