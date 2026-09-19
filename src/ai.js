@@ -70,19 +70,26 @@ function contextFor(photoRequested, contact, sizeSuggestion) {
 }
 
 async function createNvidiaReply(messages, instructions) {
-  const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${config.nvidiaApiKey}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: config.nvidiaModel,
-      temperature: 0.25,
-      max_tokens: 220,
-      messages: [
-        { role: 'system', content: instructions },
-        ...messages.map((message) => ({ role: message.role, content: message.text }))
-      ]
-    })
-  });
+  let response;
+  try {
+    response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${config.nvidiaApiKey}`, 'content-type': 'application/json' },
+      signal: AbortSignal.timeout(15_000),
+      body: JSON.stringify({
+        model: config.nvidiaModel,
+        temperature: 0.25,
+        max_tokens: 220,
+        messages: [
+          { role: 'system', content: instructions },
+          ...messages.map((message) => ({ role: message.role, content: message.text }))
+        ]
+      })
+    });
+  } catch (error) {
+    console.error(`NVIDIA NIM isteği zaman aşımına uğradı veya bağlanamadı: ${error.message}`);
+    return '';
+  }
   if (!response.ok) {
     const errorBody = await response.text().catch(() => '');
     console.error(`NVIDIA NIM isteği başarısız: ${response.status} ${errorBody.slice(0, 300)}`);
