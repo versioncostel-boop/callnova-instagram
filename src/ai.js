@@ -54,7 +54,7 @@ function fallbackReply(messages) {
     return 'Efendim ürünlerimiz kendi üretimimizdir; 22 ayar altın kaplama ve paslanmaz çelik altyapı kullanıyoruz. ✨ Günlük kullanıma dayanıklıdır, kararma, solma veya boya atması yapmaz. ✨ Görünüm olarak gerçek altından gözle ayırt edilmesi çok zordur; net ayrım profesyonel testle yapılır, ürünümüzün altın kaplama olduğunu şeffafça belirtiyoruz. ✨';
   }
   if (/ödeme|odeme|kapıda|kapida|kart|nakit|iban|havale|eft/.test(text)) {
-    return 'Kapıda kart, kapıda nakit ve havale/EFT ile ödeme seçeneklerimiz mevcuttur. 💳';
+    return 'Ödemelerimiz yalnızca havale/EFT ile alınmaktadır efendim. 💳';
   }
   if (/ölçü|olcu|beden|numara/.test(text)) {
     return 'Her ölçümüz mevcuttur efendim, en uygun seçim için boyunuzu ve kilonuzu yazarsanız tahmini yönlendirme yapabiliriz. 📏';

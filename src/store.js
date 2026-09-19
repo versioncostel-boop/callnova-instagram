@@ -69,7 +69,7 @@ function classifyTemperature(messages, startIso, endIso) {
     .map((message) => message.text.toLocaleLowerCase('tr-TR'));
   const lastText = dailyTexts.at(-1) || '';
   if (/istemiyorum|gerek yok|vazgeç|vazgec|almayacağım|almayacagim|pahalı|pahali/.test(lastText)) return 'cold';
-  if (dailyTexts.some((text) => /fiyat|kaç tl|ne kadar|adet|tane|sipariş|siparis|iban|ödeme|odeme|kapıda|kapida|kargo|indirim|ölçü|olcu|model|fotoğraf|fotograf/.test(text))) return 'hot';
+  if (dailyTexts.some((text) => /fiyat|kaç tl|ne kadar|adet|tane|sipariş|siparis|iban|ödeme|odeme|havale|eft|kargo|indirim|ölçü|olcu|model|fotoğraf|fotograf/.test(text))) return 'hot';
   return 'neutral';
 }
 
