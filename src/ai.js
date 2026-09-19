@@ -140,10 +140,10 @@ async function createGroqReply(messages, instructions) {
   return extractChatCompletionText(await response.json());
 }
 
-async function createGeminiReply(messages, instructions) {
+async function createGeminiReply(messages, instructions, model = config.geminiModel) {
   let response;
   try {
-    response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel}:generateContent`, {
+    response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST',
       headers: { 'x-goog-api-key': config.geminiApiKey, 'content-type': 'application/json' },
       signal: AbortSignal.timeout(15_000),
@@ -176,7 +176,12 @@ export async function createReply(messages, photoRequested, contact, sizeSuggest
   const instructions = contextFor(photoRequested, contact, sizeSuggestion);
   if (config.geminiApiKey) {
     const geminiReply = await createGeminiReply(messages, instructions);
-    return geminiReply || fallbackReply(messages);
+    if (geminiReply) return geminiReply;
+    if (config.geminiModel !== 'gemini-2.5-flash-lite') {
+      const liteReply = await createGeminiReply(messages, instructions, 'gemini-2.5-flash-lite');
+      if (liteReply) return liteReply;
+    }
+    return fallbackReply(messages);
   }
   if (config.groqApiKey) {
     const groqReply = await createGroqReply(messages, instructions);
