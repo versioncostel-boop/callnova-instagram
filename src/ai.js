@@ -28,6 +28,11 @@ function extractGeminiText(payload) {
     .trim();
 }
 
+function isUsableSalesReply(reply) {
+  const text = reply?.trim() || '';
+  return text.length >= 30 && /[.!?…✨📦💳📷📏🛍️]$/.test(text);
+}
+
 function fallbackReply(messages) {
   const text = messages.at(-1)?.text?.trim().toLocaleLowerCase('tr-TR') || '';
   if (/^(selam|slm|merhaba|sa|selamlar|hey)[!?. ]*$/.test(text)) {
@@ -156,7 +161,7 @@ async function createGeminiReply(messages, instructions, model = config.geminiMo
         input: messages.map((message) => `${message.role === 'assistant' ? 'Satış temsilcisi' : 'Müşteri'}: ${message.text}`).join('\n'),
         generation_config: {
           temperature: 0.25,
-          max_output_tokens: 140
+          max_output_tokens: 220
         }
       })
     });
@@ -176,10 +181,10 @@ export async function createReply(messages, photoRequested, contact, sizeSuggest
   const instructions = contextFor(photoRequested, contact, sizeSuggestion);
   if (config.geminiApiKey) {
     const geminiReply = await createGeminiReply(messages, instructions);
-    if (geminiReply) return geminiReply;
+    if (isUsableSalesReply(geminiReply)) return geminiReply;
     if (config.geminiModel !== 'gemini-3.5-flash-lite') {
       const liteReply = await createGeminiReply(messages, instructions, 'gemini-3.5-flash-lite');
-      if (liteReply) return liteReply;
+      if (isUsableSalesReply(liteReply)) return liteReply;
     }
     return fallbackReply(messages);
   }
