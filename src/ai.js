@@ -71,7 +71,11 @@ export async function createReply(messages, photoRequested, contact, sizeSuggest
       input: messages.map((message) => ({ role: message.role, content: message.text }))
     })
   });
-  if (!response.ok) throw new Error(`OpenAI isteği başarısız: ${response.status}`);
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    console.error(`OpenAI isteği başarısız: ${response.status} ${errorBody.slice(0, 300)}`);
+    return fallbackReply(messages);
+  }
   const payload = await response.json();
   return extractOutputText(payload) || fallbackReply(messages);
 }
