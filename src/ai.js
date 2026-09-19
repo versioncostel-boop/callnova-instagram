@@ -153,8 +153,11 @@ async function createGeminiReply(messages, instructions) {
           role: message.role === 'assistant' ? 'model' : 'user',
           parts: [{ text: message.text }]
         })),
-        generationConfig: { temperature: 0.25, maxOutputTokens: 140 },
-        thinkingConfig: { thinkingLevel: 'low' }
+        generationConfig: {
+          temperature: 0.25,
+          maxOutputTokens: 140,
+          thinkingConfig: { thinkingLevel: 'low' }
+        }
       })
     });
   } catch (error) {
