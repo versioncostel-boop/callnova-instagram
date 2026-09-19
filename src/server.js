@@ -12,11 +12,13 @@ import { getConversation, getDailyReportData, getHandledCommentIds, rememberHand
 
 const pendingMessages = new Map();
 const handledMessageIds = new Set();
+const recentInboundFingerprints = new Map();
 const handledCommentIds = new Set();
 const commentReplyTimestamps = [];
 const replyDelayMs = 10_000;
 const maxCommentRepliesPerHour = 30;
 const commentReplyWindowMs = 60 * 60 * 1000;
+const duplicateMessageWindowMs = 30 * 60 * 1000;
 
 function sendHtml(response, title, content) {
   response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
@@ -112,11 +114,26 @@ function acceptIncomingMessage(event) {
   const message = event.message || event.value?.message;
   const senderId = event.sender?.id || event.value?.sender?.id || event.value?.from?.id || event.value?.sender_id;
   const messageId = message?.mid || message?.id || event.message_id;
-  if (!message?.text || event.message?.is_echo || event.value?.message?.is_echo) return;
+  const isEcho = Boolean(event.is_echo || event.value?.is_echo || event.message?.is_echo || event.value?.message?.is_echo);
+  if (!message?.text || isEcho || senderId === config.instagramAccountId) {
+    if (isEcho || senderId === config.instagramAccountId) console.log('Botun kendi mesaj eventi yok sayıldı.');
+    return;
+  }
   if (messageId && handledMessageIds.has(messageId)) return;
   if (messageId) {
     handledMessageIds.add(messageId);
     if (handledMessageIds.size > 5000) handledMessageIds.clear();
+  }
+  const now = Date.now();
+  const fingerprint = `${senderId}:${message.text.trim().toLocaleLowerCase('tr-TR')}`;
+  const previousAt = recentInboundFingerprints.get(fingerprint);
+  if (previousAt && now - previousAt < duplicateMessageWindowMs) {
+    console.log(`Tekrarlanan müşteri mesajı yok sayıldı: ${senderId}`);
+    return;
+  }
+  recentInboundFingerprints.set(fingerprint, now);
+  for (const [key, timestamp] of recentInboundFingerprints) {
+    if (now - timestamp > duplicateMessageWindowMs) recentInboundFingerprints.delete(key);
   }
   queueIncomingMessage(senderId, message.text);
 }
