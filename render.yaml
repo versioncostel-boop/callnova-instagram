@@ -16,7 +16,7 @@ services:
       - key: NVIDIA_API_KEY
         sync: false
       - key: NVIDIA_MODEL
-        value: deepseek-ai/deepseek-v4-flash-0731
+        value: nvidia/nemotron-3.5-lightning-30b-a3b
       - key: META_VERIFY_TOKEN
         sync: false
       - key: OPENAI_API_KEY

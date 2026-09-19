@@ -70,6 +70,7 @@ function contextFor(photoRequested, contact, sizeSuggestion) {
 }
 
 async function createNvidiaReply(messages, instructions) {
+  const isLightning = config.nvidiaModel === 'nvidia/nemotron-3.5-lightning-30b-a3b';
   let response;
   try {
     response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
@@ -79,7 +80,11 @@ async function createNvidiaReply(messages, instructions) {
       body: JSON.stringify({
         model: config.nvidiaModel,
         temperature: 0.25,
-        max_tokens: 140,
+        max_tokens: isLightning ? 110 : 140,
+        ...(isLightning ? {
+          reasoning_budget: 128,
+          chat_template_kwargs: { enable_thinking: true }
+        } : {}),
         messages: [
           { role: 'system', content: instructions },
           ...messages.map((message) => ({ role: message.role, content: message.text }))

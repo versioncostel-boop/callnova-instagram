@@ -7,7 +7,7 @@ export const config = {
   groqApiKey: process.env.GROQ_API_KEY,
   groqModel: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
   nvidiaApiKey: process.env.NVIDIA_API_KEY,
-  nvidiaModel: process.env.NVIDIA_MODEL || 'deepseek-ai/deepseek-v4-flash-0731',
+  nvidiaModel: process.env.NVIDIA_MODEL || 'nvidia/nemotron-3.5-lightning-30b-a3b',
   metaVerifyToken: process.env.META_VERIFY_TOKEN,
   metaAppSecret: process.env.META_APP_SECRET,
   instagramAccessToken: process.env.INSTAGRAM_PAGE_ACCESS_TOKEN,
