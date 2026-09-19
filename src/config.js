@@ -4,6 +4,8 @@ export const config = {
   port: Number(process.env.PORT || 3000),
   openAiApiKey: process.env.OPENAI_API_KEY,
   openAiModel: process.env.OPENAI_MODEL || 'gpt-5.6',
+  nvidiaApiKey: process.env.NVIDIA_API_KEY,
+  nvidiaModel: process.env.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct',
   metaVerifyToken: process.env.META_VERIFY_TOKEN,
   metaAppSecret: process.env.META_APP_SECRET,
   instagramAccessToken: process.env.INSTAGRAM_PAGE_ACCESS_TOKEN,
@@ -23,7 +25,7 @@ export const config = {
 
 export function assertRuntimeConfig() {
   const required = [
-    ['OPENAI_API_KEY', config.openAiApiKey],
+    ['OPENAI_API_KEY veya NVIDIA_API_KEY', config.openAiApiKey || config.nvidiaApiKey],
     ['META_VERIFY_TOKEN', config.metaVerifyToken],
     ['META_APP_SECRET', config.metaAppSecret],
     ['INSTAGRAM_PAGE_ACCESS_TOKEN', config.instagramAccessToken]
