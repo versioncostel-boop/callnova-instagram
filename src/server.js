@@ -111,6 +111,10 @@ function queueIncomingMessage(senderId, text) {
 }
 
 function acceptIncomingMessage(event) {
+  if (!config.botEnabled) {
+    console.log('Bot pasif: gelen DM yanıtlanmadı.');
+    return;
+  }
   const message = event.message || event.value?.message;
   const senderId = event.sender?.id || event.value?.sender?.id || event.value?.from?.id || event.value?.sender_id;
   const messageId = message?.mid || message?.id || event.message_id;
@@ -139,6 +143,10 @@ function acceptIncomingMessage(event) {
 }
 
 async function queueCommentPrivateReply(commentId, commenterId, commentText = '') {
+  if (!config.botEnabled) {
+    console.log('Bot pasif: gelen yorum yanıtlanmadı.');
+    return;
+  }
   if (!commentId || handledCommentIds.has(commentId)) return;
   if (/dm'?den|özelden|mesaj(?:dan|la) cevap verildi|cevaplandı/i.test(commentText)) return;
   if (commenterId) {

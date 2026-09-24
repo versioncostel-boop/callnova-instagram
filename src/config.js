@@ -2,6 +2,7 @@ import process from 'node:process';
 
 export const config = {
   port: Number(process.env.PORT || 3000),
+  botEnabled: String(process.env.BOT_ENABLED || 'false').toLowerCase() === 'true',
   openAiApiKey: process.env.OPENAI_API_KEY,
   openAiModel: process.env.OPENAI_MODEL || 'gpt-5.6',
   geminiApiKey: process.env.GEMINI_API_KEY,
