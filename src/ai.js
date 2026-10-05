@@ -1,4 +1,4 @@
-import { salesInstructions } from './knowledge.js';
+import { salesInstructions, welcomeMessage } from './knowledge.js';
 import { config } from './config.js';
 
 function extractOutputText(payload) {
@@ -36,7 +36,7 @@ function isUsableSalesReply(reply) {
 function fallbackReply(messages) {
   const text = messages.at(-1)?.text?.trim().toLocaleLowerCase('tr-TR') || '';
   if (/^(selam|slm|merhaba|sa|selamlar|hey)[!?. ]*$/.test(text)) {
-    return 'Merhabalar, bileziklerimizde tek adet fiyatı 450 TL’dir efendim. ✨';
+    return welcomeMessage;
   }
   if (/teşekkür|tesekkur|sağ ol|sag ol/.test(text)) {
     return 'Rica ederiz, başka bir sorunuz olursa yardımcı olmaktan memnuniyet duyarız. ✨';
@@ -51,10 +51,10 @@ function fallbackReply(messages) {
     return 'Her bileziğimiz 450 TL’dir, 5 adet ve üzeri siparişlerde %10, 10 adet ve üzeri siparişlerde %15 indirim uygulanır. ✨';
   }
   if (/sol|karar|renk|paslan|çelik|celik|kalite/.test(text)) {
-    return 'Efendim ürünlerimiz kendi üretimimizdir; 22 ayar altın kaplama ve paslanmaz çelik altyapı kullanıyoruz. ✨ Günlük kullanıma dayanıklıdır, kararma, solma veya boya atması yapmaz. ✨ Görünüm olarak gerçek altından gözle ayırt edilmesi çok zordur; net ayrım profesyonel testle yapılır, ürünümüzün altın kaplama olduğunu şeffafça belirtiyoruz. ✨';
+    return 'Ürünlerimiz 22 ayar altın kaplama, paslanmaz çelik altyapılı ve günlük kullanıma dayanıklıdır. ✨ Altın kaplama olduğunu şeffafça belirtiriz. ✨';
   }
   if (/ödeme|odeme|kapıda|kapida|kart|nakit|iban|havale|eft/.test(text)) {
-    return 'Ödemelerimiz yalnızca havale/EFT ile alınmaktadır efendim. 💳';
+    return 'Kapıda ödeme seçeneğimiz yoktur efendim. Siparişinizi Shopier mağazamızdan oluşturabilirsiniz: https://www.shopier.com/zerafettakii 😊';
   }
   if (/ölçü|olcu|beden|numara/.test(text)) {
     return 'Her ölçümüz mevcuttur efendim, en uygun seçim için boyunuzu ve kilonuzu yazarsanız tahmini yönlendirme yapabiliriz. 📏';

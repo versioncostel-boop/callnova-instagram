@@ -5,7 +5,7 @@ import { createReply } from './ai.js';
 import { saveLead } from './crm.js';
 import { sendDailyReport } from './email.js';
 import { getInstagramProfile, sendInstagramCommentPrivateReply, sendInstagramCommentReply, sendInstagramMessage } from './instagram.js';
-import { commentWelcomeMessage } from './knowledge.js';
+import { commentWelcomeMessage, welcomeMessage } from './knowledge.js';
 import { purchaseStage, requestedPhotos, updateContact } from './lead.js';
 import { findSizeSuggestion } from './size.js';
 import { getConversation, getDailyReportData, getHandledCommentIds, rememberHandledCommentId, saveConversation } from './store.js';
@@ -50,7 +50,10 @@ async function handleMessage(senderId, text) {
   conversation.paymentStage = paymentStage || conversation.paymentStage;
   conversation.messages = [...conversation.messages, { role: 'user', text, at: new Date().toISOString() }].slice(-8);
 
-  let reply = await createReply(conversation.messages, wantsPhotos, conversation.contact, findSizeSuggestion(text));
+  const isGreeting = /^(selam|slm|merhaba|sa|selamlar|hey)[!?. ]*$/iu.test(text.trim());
+  let reply = isGreeting
+    ? welcomeMessage
+    : await createReply(conversation.messages, wantsPhotos, conversation.contact, findSizeSuggestion(text));
   const needsTeamFollowUp = reply.includes('[EKIP_BILDIRIMI]');
   if (needsTeamFollowUp) {
     reply = reply.replace(/\s*\[EKIP_BILDIRIMI\]\s*/g, ' ').trim();
