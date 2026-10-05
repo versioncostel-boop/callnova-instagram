@@ -33,6 +33,29 @@ function isUsableSalesReply(reply) {
   return text.length >= 30 && /[.!?…✨📦💳📷📏🛍️]$/.test(text);
 }
 
+function formatTurkishAmount(amount) {
+  return new Intl.NumberFormat('tr-TR', {
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: 2
+  }).format(amount);
+}
+
+export function quantityReplyForConversation(messages) {
+  const customerText = messages.at(-1)?.text?.trim() || '';
+  const quantity = Number(customerText.match(/^(\d{1,3})\s*(?:adet|tane)?$/iu)?.[1]);
+  const previousAssistantMessage = [...messages].reverse().slice(1).find((message) => message.role === 'assistant')?.text || '';
+  if (!Number.isInteger(quantity) || quantity < 1 || !/kaç adet|ne kadar adet|kaç tane/i.test(previousAssistantMessage)) return '';
+
+  const subtotal = quantity * 449;
+  const discountRate = quantity >= 10 ? 0.15 : quantity >= 5 ? 0.10 : 0;
+  const discountedSubtotal = subtotal * (1 - discountRate);
+  const shipping = quantity >= 3 ? 0 : 135;
+  const total = discountedSubtotal + shipping;
+  const discountText = discountRate ? ` %${discountRate * 100} indirimle` : '';
+  const shippingText = shipping ? `kargo ${formatTurkishAmount(shipping)} TL` : 'kargo ücretsiz';
+  return `${quantity} adet için toplam${discountText} ${formatTurkishAmount(total)} TL, ${shippingText}. 📦 Siparişinizi Shopier mağazamızdan oluşturabilirsiniz: https://www.shopier.com/zerafettakii 😊`;
+}
+
 function fallbackReply(messages) {
   const text = messages.at(-1)?.text?.trim().toLocaleLowerCase('tr-TR') || '';
   if (/^(selam|slm|merhaba|sa|selamlar|hey)[!?. ]*$/.test(text)) {
@@ -45,7 +68,7 @@ function fallbackReply(messages) {
     return 'Tek adet fiyatımız 449 TL’dir efendim. ✨';
   }
   if (/kargo|teslimat|gönderim|gonderim/.test(text)) {
-    return '3 adet ve üzeri siparişlerde kargo ücretsizdir, altındaki siparişlerde kargo bedeli 135 TL’dir. 📦';
+    return 'Türkiye’nin 81 iline gönderim yapıyoruz; 3 adet ve üzeri siparişlerde kargo ücretsizdir. 📦';
   }
   if (/adet|tane|5 li|10 lu|indirim/.test(text)) {
     return 'Her bileziğimiz 449 TL’dir; 3 adet ve üzeri siparişlerde kargo ücretsizdir. ✨';
@@ -178,6 +201,8 @@ async function createGeminiReply(messages, instructions, model = config.geminiMo
 }
 
 export async function createReply(messages, photoRequested, contact, sizeSuggestion) {
+  const quantityReply = quantityReplyForConversation(messages);
+  if (quantityReply) return quantityReply;
   const instructions = contextFor(photoRequested, contact, sizeSuggestion);
   if (config.geminiApiKey) {
     const geminiReply = await createGeminiReply(messages, instructions);

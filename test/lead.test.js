@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { purchaseStage, requestedPhotos, updateContact } from '../src/lead.js';
 import { leadEmailContent } from '../src/email.js';
 import { findSizeSuggestion } from '../src/size.js';
+import { quantityReplyForConversation } from '../src/ai.js';
 
 test('fotoğraf isteğini algılar', () => assert.equal(requestedPhotos('Model fotoğraflarını atar mısınız?'), true));
 test('isim ve telefonu yakalar', () => {
@@ -24,4 +25,12 @@ test('ödeme bildirimi e-posta içeriğini oluşturur', () => {
 });
 test('boy ve kilo ile tablodan ölçü önerir', () => {
   assert.deepEqual(findSizeSuggestion('Boyum 165 cm, kilom 70 kg'), { height: 165, weight: 70, size: '62 (6,2 cm)' });
+});
+
+test('adet sorusuna verilen yalın sayıyı toplam ve kargo cevabına dönüştürür', () => {
+  const reply = quantityReplyForConversation([
+    { role: 'assistant', text: 'Kaç adet düşünüyorsunuz?' },
+    { role: 'user', text: '3' }
+  ]);
+  assert.match(reply, /3 adet için toplam 1\.347 TL, kargo ücretsiz/);
 });
