@@ -146,6 +146,10 @@ function acceptIncomingMessage(event) {
 }
 
 async function queueCommentPrivateReply(commentId, commenterId, commentText = '') {
+  if (!config.commentAutomationEnabled) {
+    console.log('Yorum otomasyonu pasif: yorum yanıtlanmadı.');
+    return;
+  }
   if (!config.botEnabled) {
     console.log('Bot pasif: gelen yorum yanıtlanmadı.');
     return;
