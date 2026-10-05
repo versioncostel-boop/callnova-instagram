@@ -42,13 +42,13 @@ function fallbackReply(messages) {
     return 'Rica ederiz, başka bir sorunuz olursa yardımcı olmaktan memnuniyet duyarız. ✨';
   }
   if (/fiyat|kaç tl|ne kadar|ücret/.test(text)) {
-    return 'Tek adet fiyatımız 450 TL’dir efendim. ✨';
+    return 'Tek adet fiyatımız 449 TL’dir efendim. ✨';
   }
   if (/kargo|teslimat|gönderim|gonderim/.test(text)) {
-    return '1.500 TL üzeri alışverişlerde kargo ücretsizdir, altındaki siparişlerde kargo bedeli 135 TL’dir. 📦';
+    return '3 adet ve üzeri siparişlerde kargo ücretsizdir, altındaki siparişlerde kargo bedeli 135 TL’dir. 📦';
   }
   if (/adet|tane|5 li|10 lu|indirim/.test(text)) {
-    return 'Her bileziğimiz 450 TL’dir, 5 adet ve üzeri siparişlerde %10, 10 adet ve üzeri siparişlerde %15 indirim uygulanır. ✨';
+    return 'Her bileziğimiz 449 TL’dir; 3 adet ve üzeri siparişlerde kargo ücretsizdir. ✨';
   }
   if (/sol|karar|renk|paslan|çelik|celik|kalite/.test(text)) {
     return 'Ürünlerimiz 22 ayar altın kaplama, paslanmaz çelik altyapılı ve günlük kullanıma dayanıklıdır. ✨ Altın kaplama olduğunu şeffafça belirtiriz. ✨';
@@ -57,7 +57,7 @@ function fallbackReply(messages) {
     return 'Kapıda ödeme seçeneğimiz yoktur efendim. Siparişinizi Shopier mağazamızdan oluşturabilirsiniz: https://www.shopier.com/zerafettakii 😊';
   }
   if (/ölçü|olcu|beden|numara/.test(text)) {
-    return 'Her ölçümüz mevcuttur efendim, en uygun seçim için boyunuzu ve kilonuzu yazarsanız tahmini yönlendirme yapabiliriz. 📏';
+    return '56’dan 72’ye kadar tüm ölçülerimiz mevcuttur efendim. En uygun ölçü için boyunuzu ve kilonuzu yazabilirsiniz. 📏';
   }
   if (/fotoğraf|fotograf|görsel|gorsel|resim/.test(text)) {
     return 'Elbette efendim, hangi modeli incelemek istediğinizi yazarsanız detaylı fotoğraf konusunda yardımcı olalım. 📷';

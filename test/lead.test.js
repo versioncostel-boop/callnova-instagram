@@ -23,5 +23,5 @@ test('ödeme bildirimi e-posta içeriğini oluşturur', () => {
   assert.match(email.text, /Ayşe Yılmaz/);
 });
 test('boy ve kilo ile tablodan ölçü önerir', () => {
-  assert.deepEqual(findSizeSuggestion('Boyum 165 cm, kilom 70 kg'), { height: 165, weight: 70, size: '6.0 – 6.2' });
+  assert.deepEqual(findSizeSuggestion('Boyum 165 cm, kilom 70 kg'), { height: 165, weight: 70, size: '62 (6,2 cm)' });
 });
