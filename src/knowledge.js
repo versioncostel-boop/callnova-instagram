@@ -1,4 +1,4 @@
-export const welcomeMessage = 'Efendim merhabalar shopier mağazamız üzerinden sipariş verebilirsiniz 😊\n\nhttps://www.shopier.com/zerafettakii';
+export const welcomeMessage = 'Merhabalar, nasıl yardımcı olabiliriz? ✨';
 export const commentWelcomeMessage = welcomeMessage;
 
 export function salesInstructions(bankIban, bankAccountName) {

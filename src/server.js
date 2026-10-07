@@ -22,7 +22,6 @@ const maxCommentRepliesPerHour = 30;
 const commentReplyWindowMs = 60 * 60 * 1000;
 const duplicateMessageWindowMs = 30 * 60 * 1000;
 const botEchoWindowMs = 2 * 60 * 1000;
-const firstMessageReply = 'Tek adet fiyatımız 449 TL’dir. ✨';
 
 function sendHtml(response, title, content) {
   response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
@@ -49,7 +48,7 @@ async function sendBotMessage(recipientId, text) {
   await sendInstagramMessage(recipientId, text);
 }
 
-async function handleMessage(senderId, text, { firstMessageOnly = false } = {}) {
+async function handleMessage(senderId, text) {
   const conversation = await getConversation(senderId);
 
   conversation.contact = updateContact(conversation.contact, text);
@@ -60,11 +59,9 @@ async function handleMessage(senderId, text, { firstMessageOnly = false } = {}) 
   conversation.messages = [...conversation.messages, { role: 'user', text, at: new Date().toISOString() }].slice(-8);
 
   const isGreeting = /^(selam|slm|merhaba|sa|selamlar|hey)[!?. ]*$/iu.test(text.trim());
-  let reply = firstMessageOnly
-    ? firstMessageReply
-    : isGreeting
-      ? welcomeMessage
-      : await createReply(conversation.messages, wantsPhotos, conversation.contact, findSizeSuggestion(text));
+  const reply = isGreeting
+    ? welcomeMessage
+    : await createReply(conversation.messages, wantsPhotos, conversation.contact, findSizeSuggestion(text));
   const needsTeamFollowUp = reply.includes('[EKIP_BILDIRIMI]');
   if (needsTeamFollowUp) {
     reply = reply.replace(/\s*\[EKIP_BILDIRIMI\]\s*/g, ' ').trim();
@@ -114,13 +111,6 @@ async function handleMessage(senderId, text, { firstMessageOnly = false } = {}) 
 async function queueIncomingMessage(senderId, text) {
   if (!senderId || !text?.trim()) return;
   console.log(`DM alındı: ${senderId}`);
-
-  const conversation = await getConversation(senderId);
-  const isFirstCustomerMessage = !conversation.messages?.some((message) => message.role === 'user');
-  if (isFirstCustomerMessage) {
-    await handleMessage(senderId, text, { firstMessageOnly: true });
-    return;
-  }
 
   const pending = pendingMessages.get(senderId) || { texts: [], timer: null };
   pending.texts.push(text);
