@@ -11,14 +11,18 @@ import { findSizeSuggestion } from './size.js';
 import { getConversation, getDailyReportData, getHandledCommentIds, rememberHandledCommentId, saveConversation } from './store.js';
 
 const pendingMessages = new Map();
+const recentBotMessages = new Map();
 const handledMessageIds = new Set();
 const recentInboundFingerprints = new Map();
 const handledCommentIds = new Set();
 const commentReplyTimestamps = [];
-const replyDelayMs = 10_000;
+const followUpDelayMs = 10 * 60 * 1000;
+const commentReplyDelayMs = 10_000;
 const maxCommentRepliesPerHour = 30;
 const commentReplyWindowMs = 60 * 60 * 1000;
 const duplicateMessageWindowMs = 30 * 60 * 1000;
+const botEchoWindowMs = 2 * 60 * 1000;
+const firstMessageReply = 'Tek adet fiyatımız 449 TL’dir. ✨';
 
 function sendHtml(response, title, content) {
   response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
@@ -40,7 +44,12 @@ function readBody(request) {
   });
 }
 
-async function handleMessage(senderId, text) {
+async function sendBotMessage(recipientId, text) {
+  recentBotMessages.set(recipientId, { text, at: Date.now() });
+  await sendInstagramMessage(recipientId, text);
+}
+
+async function handleMessage(senderId, text, { firstMessageOnly = false } = {}) {
   const conversation = await getConversation(senderId);
 
   conversation.contact = updateContact(conversation.contact, text);
@@ -51,9 +60,11 @@ async function handleMessage(senderId, text) {
   conversation.messages = [...conversation.messages, { role: 'user', text, at: new Date().toISOString() }].slice(-8);
 
   const isGreeting = /^(selam|slm|merhaba|sa|selamlar|hey)[!?. ]*$/iu.test(text.trim());
-  let reply = isGreeting
-    ? welcomeMessage
-    : await createReply(conversation.messages, wantsPhotos, conversation.contact, findSizeSuggestion(text));
+  let reply = firstMessageOnly
+    ? firstMessageReply
+    : isGreeting
+      ? welcomeMessage
+      : await createReply(conversation.messages, wantsPhotos, conversation.contact, findSizeSuggestion(text));
   const needsTeamFollowUp = reply.includes('[EKIP_BILDIRIMI]');
   if (needsTeamFollowUp) {
     reply = reply.replace(/\s*\[EKIP_BILDIRIMI\]\s*/g, ' ').trim();
@@ -96,21 +107,53 @@ async function handleMessage(senderId, text) {
   }
 
   await saveConversation(senderId, conversation);
-  await sendInstagramMessage(senderId, reply);
+  await sendBotMessage(senderId, reply);
   console.log(`DM yanıtlandı: ${senderId}`);
 }
 
-function queueIncomingMessage(senderId, text) {
+async function queueIncomingMessage(senderId, text) {
   if (!senderId || !text?.trim()) return;
   console.log(`DM alındı: ${senderId}`);
+
+  const conversation = await getConversation(senderId);
+  const isFirstCustomerMessage = !conversation.messages?.some((message) => message.role === 'user');
+  if (isFirstCustomerMessage) {
+    await handleMessage(senderId, text, { firstMessageOnly: true });
+    return;
+  }
+
   const pending = pendingMessages.get(senderId) || { texts: [], timer: null };
   pending.texts.push(text);
   clearTimeout(pending.timer);
   pending.timer = setTimeout(() => {
     pendingMessages.delete(senderId);
     handleMessage(senderId, pending.texts.join('\n')).catch(console.error);
-  }, replyDelayMs);
+  }, followUpDelayMs);
   pendingMessages.set(senderId, pending);
+}
+
+function customerIdForEcho(event) {
+  return event.recipient?.id || event.value?.recipient?.id || event.recipient_id || event.value?.recipient_id;
+}
+
+function handleOutgoingEcho(event, messageText) {
+  const customerId = customerIdForEcho(event);
+  if (!customerId) return;
+  const recentBotMessage = recentBotMessages.get(customerId);
+  const isOwnBotEcho = recentBotMessage
+    && recentBotMessage.text === messageText
+    && Date.now() - recentBotMessage.at <= botEchoWindowMs;
+  if (isOwnBotEcho) {
+    console.log('Botun kendi mesaj eventi yok sayıldı.');
+    return;
+  }
+
+  const pending = pendingMessages.get(customerId);
+  if (pending) {
+    clearTimeout(pending.timer);
+    pendingMessages.delete(customerId);
+    console.log(`İnsan yanıt verdi: bekleyen bot yanıtı iptal edildi (${customerId}).`);
+  }
 }
 
 function acceptIncomingMessage(event) {
@@ -122,8 +165,9 @@ function acceptIncomingMessage(event) {
   const senderId = event.sender?.id || event.value?.sender?.id || event.value?.from?.id || event.value?.sender_id;
   const messageId = message?.mid || message?.id || event.message_id;
   const isEcho = Boolean(event.is_echo || event.value?.is_echo || event.message?.is_echo || event.value?.message?.is_echo);
-  if (!message?.text || isEcho || senderId === config.instagramAccountId) {
-    if (isEcho || senderId === config.instagramAccountId) console.log('Botun kendi mesaj eventi yok sayıldı.');
+  if (!message?.text) return;
+  if (isEcho || senderId === config.instagramAccountId) {
+    handleOutgoingEcho(event, message.text);
     return;
   }
   if (messageId && handledMessageIds.has(messageId)) return;
@@ -142,7 +186,7 @@ function acceptIncomingMessage(event) {
   for (const [key, timestamp] of recentInboundFingerprints) {
     if (now - timestamp > duplicateMessageWindowMs) recentInboundFingerprints.delete(key);
   }
-  queueIncomingMessage(senderId, message.text);
+  queueIncomingMessage(senderId, message.text).catch(console.error);
 }
 
 async function queueCommentPrivateReply(commentId, commenterId, commentText = '') {
@@ -179,7 +223,7 @@ async function queueCommentPrivateReply(commentId, commenterId, commentText = ''
       .then(() => rememberHandledCommentId(commentId))
       .catch(console.error);
   };
-  setTimeout(sendWhenAllowed, replyDelayMs);
+  setTimeout(sendWhenAllowed, commentReplyDelayMs);
 }
 
 const server = createServer(async (request, response) => {

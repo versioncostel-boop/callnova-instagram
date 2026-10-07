@@ -30,7 +30,7 @@ function extractGeminiText(payload) {
 
 function isUsableSalesReply(reply) {
   const text = reply?.trim() || '';
-  return text.length >= 30 && /[.!?…✨📦💳📷📏🛍️]$/.test(text);
+  return text.length >= 30 && text.length <= 240 && /[.!?…✨📦💳📷📏🛍️]$/.test(text);
 }
 
 function formatTurkishAmount(amount) {
@@ -184,7 +184,7 @@ async function createGeminiReply(messages, instructions, model = config.geminiMo
         input: messages.map((message) => `${message.role === 'assistant' ? 'Satış temsilcisi' : 'Müşteri'}: ${message.text}`).join('\n'),
         generation_config: {
           temperature: 0.25,
-          max_output_tokens: 100
+          max_output_tokens: 70
         }
       })
     });
