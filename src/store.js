@@ -1,9 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { config } from './config.js';
 
 const dataDir = path.resolve('data');
-const conversationsFile = path.join(dataDir, 'conversations.json');
-const leadsFile = path.join(dataDir, 'leads.json');
+const dataPrefix = `callnova-${config.callnovaDataVersion.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+const conversationsFile = path.join(dataDir, `${dataPrefix}-conversations.json`);
+const leadsFile = path.join(dataDir, `${dataPrefix}-leads.json`);
 const handledCommentsFile = path.join(dataDir, 'handled-comments.json');
 
 async function readJson(file, fallback) {

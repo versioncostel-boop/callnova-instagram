@@ -7,11 +7,13 @@ test('CallNova lead akışı sektör, şehir, hesap ve telefon sırasını izler
   assert.equal(advanceCallnovaLead(conversation, 'Bilgi almak istiyorum').reply, callnovaReplies.askSector);
   assert.equal(advanceCallnovaLead(conversation, 'Ayakkabı').reply, callnovaReplies.askCity);
   assert.equal(advanceCallnovaLead(conversation, 'İstanbul').reply, callnovaReplies.askInstagram);
-  assert.equal(advanceCallnovaLead(conversation, '@ornekhesap').reply, callnovaReplies.askPhone);
+  assert.equal(advanceCallnovaLead(conversation, '@ornekhesap').reply, callnovaReplies.askBudget);
+  assert.equal(advanceCallnovaLead(conversation, '25.000 TL').reply, callnovaReplies.askPhone);
   const result = advanceCallnovaLead(conversation, '0532 111 22 33');
   assert.equal(result.reply, callnovaReplies.completed);
   assert.equal(result.completedNow, true);
   assert.equal(conversation.callnovaLead.phone, '05321112233');
+  assert.equal(conversation.callnovaLead.monthlyAdBudget, '25.000 TL');
 });
 
 test('geçersiz telefon tamamlanmış lead oluşturmaz', () => {

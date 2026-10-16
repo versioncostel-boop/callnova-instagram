@@ -4,6 +4,7 @@ export const callnovaReplies = {
   askSector: 'Merhaba, işletmeniz hangi sektördeydi?',
   askCity: 'Anladım, işletmeniz hangi şehirdeydi?',
   askInstagram: 'Harika, reklamları açacağımız Instagram hesabının adını söyler misiniz?',
+  askBudget: 'Aylık reklam bütçeniz nedir?',
   askPhone: 'Tamamdır, telefon numaranızı iletebilir misiniz?',
   askValidPhone: 'Size ulaşabileceğimiz geçerli bir cep telefonu numarası iletebilir misiniz?',
   completed: 'Teşekkür ederim, kaydınızı oluşturdum. Ekip arkadaşımız Rüzgar Bey sizinle iletişime geçerek detayları aktaracak.'
@@ -39,6 +40,11 @@ export function advanceCallnovaLead(conversation, text) {
   }
   if (lead.stage === 'instagram') {
     lead.instagramAccount = value.replace(/^@/, '');
+    lead.stage = 'budget';
+    return { reply: callnovaReplies.askBudget, completedNow: false };
+  }
+  if (lead.stage === 'budget') {
+    lead.monthlyAdBudget = value;
     lead.stage = 'phone';
     return { reply: callnovaReplies.askPhone, completedNow: false };
   }

@@ -60,7 +60,7 @@ async function handleMessage(senderId, text) {
       source: 'callnova_instagram_dm',
       requested: 'advertising_consultation',
       status: 'callnova_lead_ready',
-      issue: `Sektör: ${conversation.callnovaLead.sector} | Şehir: ${conversation.callnovaLead.city} | Reklam hesabı: @${conversation.callnovaLead.instagramAccount}`,
+      issue: `Sektör: ${conversation.callnovaLead.sector} | Şehir: ${conversation.callnovaLead.city} | Reklam hesabı: @${conversation.callnovaLead.instagramAccount} | Aylık reklam bütçesi: ${conversation.callnovaLead.monthlyAdBudget}`,
       createdAt: new Date().toISOString()
     });
     conversation.callnovaLead.saved = true;
@@ -257,6 +257,7 @@ function scheduleDailyReport() {
 assertRuntimeConfig();
 server.listen(config.port, () => {
   console.log(`CallNova bot port ${config.port} üzerinde çalışıyor.`);
+  console.log(config.crmWebhookUrl ? 'CRM anlık aktarımı aktif.' : 'CRM yerel kuyruğu aktif.');
   scheduleDailyReport();
   getHandledCommentIds()
     .then((ids) => ids.forEach((id) => handledCommentIds.add(id)))

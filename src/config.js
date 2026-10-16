@@ -17,6 +17,7 @@ export const config = {
   instagramAccessToken: process.env.INSTAGRAM_PAGE_ACCESS_TOKEN,
   instagramAccountId: process.env.INSTAGRAM_ACCOUNT_ID,
   instagramApiVersion: process.env.INSTAGRAM_API_VERSION || 'v24.0',
+  callnovaDataVersion: process.env.CALLNOVA_DATA_VERSION || 'v2',
   crmWebhookUrl: process.env.CRM_WEBHOOK_URL,
   crmWebhookBearerToken: process.env.CRM_WEBHOOK_BEARER_TOKEN,
   emailNotificationTo: (process.env.EMAIL_NOTIFICATION_TO || '').split(',').map((value) => value.trim()).filter(Boolean),
