@@ -71,12 +71,12 @@ function normalized(text) {
   return text.toLocaleLowerCase('tr-TR').replace(/[çğıöşü]/g, char => ({ ç:'c', ğ:'g', ı:'i', ö:'o', ş:'s', ü:'u' })[char]);
 }
 
-function stagePrompt(stage) {
+export function stagePrompt(stage) {
   return ({ sector:callnovaReplies.askSector, city:callnovaReplies.askCity,
     instagram:callnovaReplies.askInstagram, budget:callnovaReplies.askBudget, phone:callnovaReplies.askPhone })[stage];
 }
 
-function isQuestion(text) {
+export function isQuestion(text) {
   const value = normalized(text);
   return /\?|\b(nasil|neden|niye|nedir|neydi|neyi|nere|hangi|kac|ne zaman|ne kadar|ne demek|ne icin|ne ise|anlamadim|anlayamadim|aciklar|anlatir|yani nasil)\b/.test(value)
     || /\b(mi|mu|midir|mudur|misiniz|musunuz|miyiz|muyuz)\b/.test(value);

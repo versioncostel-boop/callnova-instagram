@@ -1,13 +1,14 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import { config, assertRuntimeConfig } from './config.js';
-import { advanceCallnovaLead } from './callnova.js';
+import { createCallnovaTurn } from './callnova-dialogue.js';
 import { saveLead } from './crm.js';
 import { sendDailyReport } from './email.js';
 import { getInstagramProfile, sendInstagramCommentPrivateReply, sendInstagramCommentReply, sendInstagramMessage } from './instagram.js';
 import { getConversation, getDailyReportData, getHandledCommentIds, rememberHandledCommentId, saveConversation } from './store.js';
 
 const pendingMessages = new Map();
+const messageHandlers = new Map();
 const recentBotMessages = new Map();
 const handledMessageIds = new Set();
 const recentInboundFingerprints = new Map();
@@ -48,7 +49,7 @@ async function sendBotMessage(recipientId, text) {
 async function handleMessage(senderId, text) {
   const conversation = await getConversation(senderId);
   conversation.messages = [...conversation.messages, { role: 'user', text, at: new Date().toISOString() }].slice(-8);
-  const { reply, completedNow } = advanceCallnovaLead(conversation, text);
+  const { reply } = await createCallnovaTurn(conversation, text);
 
   if (conversation.callnovaLead.stage === 'completed' && !conversation.callnovaLead.crmDelivered) {
     const profile = await getInstagramProfile(senderId).catch(() => ({}));
@@ -90,7 +91,12 @@ async function queueIncomingMessage(senderId, text) {
   clearTimeout(pending.timer);
   pending.timer = setTimeout(() => {
     pendingMessages.delete(senderId);
-    handleMessage(senderId, pending.texts.join('\n')).catch(console.error);
+    const previous = messageHandlers.get(senderId) || Promise.resolve();
+    const current = previous.catch(() => {}).then(() => handleMessage(senderId, pending.texts.join('\n')));
+    messageHandlers.set(senderId, current);
+    current.catch(console.error).finally(() => {
+      if (messageHandlers.get(senderId) === current) messageHandlers.delete(senderId);
+    });
   }, followUpDelayMs);
   pendingMessages.set(senderId, pending);
 }
@@ -262,6 +268,7 @@ function scheduleDailyReport() {
 assertRuntimeConfig();
 server.listen(config.port, () => {
   console.log(`CallNova bot port ${config.port} üzerinde çalışıyor.`);
+  console.log(config.geminiApiKey ? 'CallNova bağlamlı soru yanıtı aktif.' : 'CallNova soru yanıtı yedek kurallarla çalışıyor: GEMINI_API_KEY eksik.');
   console.log(config.crmWebhookUrl ? 'CRM anlık aktarımı aktif.' : 'CRM yerel kuyruğu aktif.');
   scheduleDailyReport();
   getHandledCommentIds()
