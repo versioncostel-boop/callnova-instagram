@@ -32,6 +32,8 @@ export async function saveLead(lead) {
         signal: AbortSignal.timeout(8_000)
       });
       if (!response.ok) throw new Error(`CRM isteği başarısız: ${response.status}`);
+      const result = await response.json();
+      if (result.ok !== true || !result.leadId) throw new Error('CRM kayıt onayı geçersiz');
       destination = 'crm';
       console.log(`CRM kaydı harici sisteme aktarıldı: ${lead.instagramUserId}`);
     } catch (error) {

@@ -50,9 +50,9 @@ async function handleMessage(senderId, text) {
   conversation.messages = [...conversation.messages, { role: 'user', text, at: new Date().toISOString() }].slice(-8);
   const { reply, completedNow } = advanceCallnovaLead(conversation, text);
 
-  if (completedNow && !conversation.callnovaLead.saved) {
+  if (conversation.callnovaLead.stage === 'completed' && !conversation.callnovaLead.crmDelivered) {
     const profile = await getInstagramProfile(senderId).catch(() => ({}));
-    await saveLead({
+    const destination = await saveLead({
       instagramUserId: senderId,
       instagramUsername: profile.username || '',
       name: '',
@@ -68,6 +68,7 @@ async function handleMessage(senderId, text) {
       createdAt: new Date().toISOString()
     });
     conversation.callnovaLead.saved = true;
+    conversation.callnovaLead.crmDelivered = destination === 'crm';
   }
 
   if (reply) conversation.messages = [...conversation.messages, { role: 'assistant', text: reply, at: new Date().toISOString() }].slice(-8);
