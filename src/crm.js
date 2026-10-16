@@ -4,6 +4,7 @@ import { queueLead } from './store.js';
 
 export async function saveLead(lead) {
   await queueLead(lead);
+  console.log(`CRM kaydı anında yerel kuyruğa düştü: ${lead.instagramUserId}`);
   let destination = 'local-queue';
   if (config.crmWebhookUrl) {
     try {
@@ -18,6 +19,7 @@ export async function saveLead(lead) {
       });
       if (!response.ok) throw new Error(`CRM isteği başarısız: ${response.status}`);
       destination = 'crm';
+      console.log(`CRM kaydı harici sisteme aktarıldı: ${lead.instagramUserId}`);
     } catch (error) {
       console.error('CRM anlık aktarımı başarısız; lead yerel kuyrukta saklandı:', error.message);
     }
