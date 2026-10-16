@@ -1,4 +1,4 @@
-const mobilePattern = /(?:\+?90\s?)?(?:0\s?)?5\d{2}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}/;
+const mobilePattern = /(?<!\d)(?:\+?90\s?)?(?:0\s?)?5\d{2}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}(?!\d)/;
 
 export const callnovaReplies = {
   askSector: 'Merhaba, işletmeniz hangi sektördeydi?',
@@ -28,6 +28,11 @@ export function advanceCallnovaLead(conversation, text) {
     lead.stage = 'sector';
     return { reply: callnovaReplies.askSector, completedNow: false };
   }
+  const clarification = intakeClarification(lead.stage, value);
+  if (clarification) return { reply: clarification, completedNow: false };
+  if (/^(tamam|ok|peki|evet|hayır|hayir|merhaba|selam|sağol|sagol|teşekkürler|tesekkurler)[.!\s]*$/iu.test(value)) {
+    return { reply: stagePrompt(lead.stage), completedNow: false };
+  }
   if (lead.stage === 'sector') {
     lead.sector = value;
     lead.stage = 'city';
@@ -39,11 +44,16 @@ export function advanceCallnovaLead(conversation, text) {
     return { reply: callnovaReplies.askInstagram, completedNow: false };
   }
   if (lead.stage === 'instagram') {
-    lead.instagramAccount = value.replace(/^@/, '');
+    const account = value.match(/(?:https?:\/\/)?(?:www\.)?instagram\.com\/([a-zA-Z0-9_.]{1,30})(?:[/?#]|$)/)?.[1]
+      || value.match(/(?:^|\s)@([a-zA-Z0-9_.]{1,30})(?=\s|$)/)?.[1]
+      || (/^[a-zA-Z0-9_.]{1,30}$/.test(value) ? value : null);
+    if (!account) return { reply: 'İşletmenizin Instagram kullanıcı adını @hesapadi şeklinde paylaşabilir misiniz?', completedNow: false };
+    lead.instagramAccount = account;
     lead.stage = 'budget';
     return { reply: callnovaReplies.askBudget, completedNow: false };
   }
   if (lead.stage === 'budget') {
+    if (!isBudgetAnswer(value)) return { reply: 'Reklamlara ayda ayırmayı düşündüğünüz yaklaşık tutar nedir? Henüz belirlemediyseniz bunu da söyleyebilirsiniz.', completedNow: false };
     lead.monthlyAdBudget = value;
     lead.stage = 'phone';
     return { reply: callnovaReplies.askPhone, completedNow: false };
@@ -55,6 +65,51 @@ export function advanceCallnovaLead(conversation, text) {
   lead.stage = 'completed';
   lead.completedAt = new Date().toISOString();
   return { reply: callnovaReplies.completed, completedNow: true };
+}
+
+function normalized(text) {
+  return text.toLocaleLowerCase('tr-TR').replace(/[çğıöşü]/g, char => ({ ç:'c', ğ:'g', ı:'i', ö:'o', ş:'s', ü:'u' })[char]);
+}
+
+function stagePrompt(stage) {
+  return ({ sector:callnovaReplies.askSector, city:callnovaReplies.askCity,
+    instagram:callnovaReplies.askInstagram, budget:callnovaReplies.askBudget, phone:callnovaReplies.askPhone })[stage];
+}
+
+function isQuestion(text) {
+  const value = normalized(text);
+  return /\?|\b(nasil|neden|niye|nedir|neydi|neyi|nere|hangi|kac|ne zaman|ne kadar|ne demek|ne icin|ne ise|anlamadim|anlayamadim|aciklar|anlatir|yani nasil)\b/.test(value)
+    || /\b(mi|mu|midir|mudur|misiniz|musunuz|miyiz|muyuz)\b/.test(value);
+}
+
+export function isBudgetAnswer(text) {
+  if (isQuestion(text) || normalizeTurkishMobile(text)) return false;
+  const value = normalized(text).trim();
+  if (/^(henuz\s+)?(belirlemedim|belirlemedik|belli degil|karar vermedim|bilmiyorum|butcem yok|butce yok|sifir)([.!\s]*)$/.test(value)) return true;
+  if (/^\d+(?:[.,]\d+)*(?:\s*[-–]\s*\d+(?:[.,]\d+)*)?$/.test(value)) return value.replace(/\D/g, '').length <= 9;
+  return /\b\d+(?:[.,]\d+)*\s*(bin|milyon|k|tl|lira|₺|dolar|euro|usd|eur)\b/.test(value)
+    || /\b(on|yirmi|otuz|kirk|elli|altmis|yetmis|seksen|doksan|yuz|iki yuz|uc yuz)\s+(bin|milyon)\b/.test(value);
+}
+
+function intakeClarification(stage, text) {
+  if (!isQuestion(text)) return '';
+  const value = normalized(text);
+  if (stage === 'budget' && /aylik|gunluk|butce|nasil|anlama|ne demek|neyi|ne kadar|mi\b/.test(value)) {
+    return 'Evet, reklamlar için bir ayda ayırmayı düşündüğünüz yaklaşık tutarı soruyorum. Aylık ne kadar düşünüyorsunuz?';
+  }
+  if (/bot|yapay zek|robot/.test(value)) return `Ben CallNova’nın otomatik asistanıyım. ${stagePrompt(stage)}`;
+  if (/fiyat|ucret|paket/.test(value)) return `Hizmet ücretini Rüzgar Bey ihtiyacınıza göre netleştirecek. ${stagePrompt(stage)}`;
+  if (/ne zaman|kacta|ulas|donus/.test(value)) return `Görüşme için kesin saat paylaşamıyorum; bilgileriniz tamamlanınca Rüzgar Bey iletişime geçecek. ${stagePrompt(stage)}`;
+  if (/nasil calis|nasil hizmet|ne yapi|ne hizmet|calisma sekli/.test(value)) return `İşletmenizin reklam ihtiyacını öğrenip görüşme için bilgilerinizi alıyoruz. ${stagePrompt(stage)}`;
+  const explanations = {
+    sector: 'İşletmenizin ne iş yaptığını soruyorum; örneğin restoran veya giyim. Sektörünüz nedir?',
+    city: 'İşletmenizin bulunduğu şehri soruyorum. Hangi şehirdesiniz?',
+    instagram: 'Reklam hizmeti almak istediğiniz işletmenin Instagram kullanıcı adını soruyorum. Hesap adı nedir?',
+    budget: 'Reklamlara ayda ayırmayı düşündüğünüz yaklaşık tutarı soruyorum. Aylık bütçeniz nedir?',
+    phone: 'Rüzgar Bey’in size ulaşabilmesi için telefonunuzu istiyorum. Numaranızı paylaşabilir misiniz?'
+  };
+  if (/nasil|neden|niye|nedir|neyi|anlamadim|anlayamadim|aciklar|anlatir|hangi|ne demek|ne icin/.test(value)) return explanations[stage];
+  return `Bu detayları Rüzgar Bey görüşmede netleştirebilir. ${stagePrompt(stage)}`;
 }
 
 export function callnovaFollowUp(text) {

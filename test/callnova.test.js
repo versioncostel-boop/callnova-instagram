@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceCallnovaLead, callnovaReplies, normalizeTurkishMobile } from '../src/callnova.js';
+import { advanceCallnovaLead, callnovaReplies, normalizeTurkishMobile, isBudgetAnswer } from '../src/callnova.js';
 
 test('CallNova lead akışı sektör, şehir, hesap ve telefon sırasını izler', () => {
   const conversation = {};
@@ -14,6 +14,40 @@ test('CallNova lead akışı sektör, şehir, hesap ve telefon sırasını izler
   assert.equal(result.completedNow, true);
   assert.equal(conversation.callnovaLead.phone, '05321112233');
   assert.equal(conversation.callnovaLead.monthlyAdBudget, '25.000 TL');
+});
+
+test('bütçe açıklama sorusu telefon adımına geçmez ve yanlış veri saklamaz', () => {
+  const conversation = { callnovaLead: { stage: 'budget' } };
+  for (const text of ['aylık mı yani nasıl yani', '10 bin yeter mi?', 'Bu ücret size mi ödeniyor?', 'Anlamadım', 'tamam']) {
+    const result = advanceCallnovaLead(conversation, text);
+    assert.ok(result.reply.length > 0);
+    assert.equal(result.completedNow, false);
+    assert.equal(conversation.callnovaLead.stage, 'budget');
+    assert.equal(conversation.callnovaLead.monthlyAdBudget, undefined);
+  }
+  assert.match(advanceCallnovaLead(conversation, 'aylık mı yani nasıl yani').reply, /bir ayda/);
+  assert.equal(advanceCallnovaLead(conversation, '20 bin TL').reply, callnovaReplies.askPhone);
+  assert.equal(conversation.callnovaLead.monthlyAdBudget, '20 bin TL');
+});
+
+test('her form adımı araya giren soru ve onaydan sonra aynı bilgiyi bekler', () => {
+  for (const stage of ['sector', 'city', 'instagram', 'budget', 'phone']) {
+    const conversation = { callnovaLead: { stage } };
+    for (const text of ['Neden soruyorsunuz?', 'Nasıl çalışıyorsunuz?', 'Fiyatınız ne kadar?', 'tamam']) {
+      assert.ok(advanceCallnovaLead(conversation, text).reply.length > 0);
+      assert.deepEqual(conversation.callnovaLead, { stage });
+    }
+  }
+});
+
+test('bütçe cevaplarını sorulardan ve telefon numarasından ayırır', () => {
+  for (const text of ['25000', '25.000 TL', '20 bin', 'aylık 10k', 'yirmi bin', 'Henüz belirlemedim', 'Bütçem yok']) {
+    assert.equal(isBudgetAnswer(text), true, text);
+  }
+  for (const text of ['tamam', 'aylık mı', '10 bin uygun mu', 'ne kadar önerirsiniz', '05321112233']) {
+    assert.equal(isBudgetAnswer(text), false, text);
+  }
+  assert.equal(normalizeTurkishMobile('053211122334'), null);
 });
 
 test('geçersiz telefon tamamlanmış lead oluşturmaz', () => {
