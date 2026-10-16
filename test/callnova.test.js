@@ -22,8 +22,13 @@ test('geçersiz telefon tamamlanmış lead oluşturmaz', () => {
   assert.equal(conversation.callnovaLead.stage, 'phone');
 });
 
-test('tamamlanan lead sonraki mesajlara otomatik cevap vermez', () => {
+test('tamamlanan lead yeni kayıt açmadan kısa yanıt verir', () => {
   const conversation = { callnovaLead: { stage: 'completed' } };
-  assert.equal(advanceCallnovaLead(conversation, 'Teşekkürler').reply, '');
+  assert.match(advanceCallnovaLead(conversation, 'Teşekkürler').reply, /Rica ederim/);
+  const followUp = advanceCallnovaLead(conversation, 'Sağolun ne zaman ulaşır?');
+  assert.match(followUp.reply, /kesin bir saat paylaşamıyorum/);
+  assert.equal(followUp.completedNow, false);
+  assert.match(advanceCallnovaLead(conversation, 'Paket fiyatı nedir?').reply, /Ücret/);
+  assert.ok(advanceCallnovaLead(conversation, 'Başka bir sorum var').reply.length > 0);
   assert.equal(normalizeTurkishMobile('+90 532 111 22 33'), '05321112233');
 });

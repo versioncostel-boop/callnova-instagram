@@ -23,7 +23,7 @@ export function advanceCallnovaLead(conversation, text) {
   const value = String(text || '').trim();
   const lead = conversation.callnovaLead ||= { stage: 'initial' };
 
-  if (lead.stage === 'completed') return { reply: '', completedNow: false };
+  if (lead.stage === 'completed') return { reply: callnovaFollowUp(value), completedNow: false };
   if (lead.stage === 'initial') {
     lead.stage = 'sector';
     return { reply: callnovaReplies.askSector, completedNow: false };
@@ -55,4 +55,21 @@ export function advanceCallnovaLead(conversation, text) {
   lead.stage = 'completed';
   lead.completedAt = new Date().toISOString();
   return { reply: callnovaReplies.completed, completedNow: true };
+}
+
+export function callnovaFollowUp(text) {
+  const value = text.toLocaleLowerCase('tr-TR');
+  if (/ne zaman|kaçta|kacta|ne kadar sür|bugün|bugun|yarın|yarin|ulaş|ulas|ara(?:r|yacak|ma)|dönüş|donus/.test(value)) {
+    return 'Rüzgar Bey müsait olduğunda sizinle iletişime geçecek. Şu an kesin bir saat paylaşamıyorum.';
+  }
+  if (/fiyat|ücret|ucret|paket|ne kadar|kaç tl|kac tl/.test(value)) {
+    return 'Ücret ve hizmet detaylarını Rüzgar Bey görüşmede işletmenizin ihtiyacına göre paylaşacak.';
+  }
+  if (/bot|yapay zek|robot/.test(value)) {
+    return 'Ben CallNova’nın otomatik asistanıyım. Rüzgar Bey görüşmede size yardımcı olacak.';
+  }
+  if (/teşekkür|tesekkur|sağ\s*ol|sag\s*ol|kolay gelsin/.test(value) && !/[?]|nasıl|nasil|neden|hangi/.test(value)) {
+    return 'Rica ederim, iyi günler dilerim 😊';
+  }
+  return 'Bu konunun detayını Rüzgar Bey görüşmede netleştirebilir. Eklemek istediğiniz bilgiyi buradan yazabilirsiniz.';
 }
