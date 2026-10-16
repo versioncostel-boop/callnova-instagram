@@ -1,13 +1,10 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import { config, assertRuntimeConfig } from './config.js';
-import { createReply } from './ai.js';
+import { advanceCallnovaLead } from './callnova.js';
 import { saveLead } from './crm.js';
 import { sendDailyReport } from './email.js';
 import { getInstagramProfile, sendInstagramCommentPrivateReply, sendInstagramCommentReply, sendInstagramMessage } from './instagram.js';
-import { commentWelcomeMessage, welcomeMessage } from './knowledge.js';
-import { purchaseStage, requestedPhotos, updateContact } from './lead.js';
-import { findSizeSuggestion } from './size.js';
 import { getConversation, getDailyReportData, getHandledCommentIds, rememberHandledCommentId, saveConversation } from './store.js';
 
 const pendingMessages = new Map();
@@ -16,7 +13,7 @@ const handledMessageIds = new Set();
 const recentInboundFingerprints = new Map();
 const handledCommentIds = new Set();
 const commentReplyTimestamps = [];
-const followUpDelayMs = 10 * 60 * 1000;
+const followUpDelayMs = 10_000;
 const commentReplyDelayMs = 10_000;
 const maxCommentRepliesPerHour = 30;
 const commentReplyWindowMs = 60 * 60 * 1000;
@@ -50,60 +47,31 @@ async function sendBotMessage(recipientId, text) {
 
 async function handleMessage(senderId, text) {
   const conversation = await getConversation(senderId);
-
-  conversation.contact = updateContact(conversation.contact, text);
-  const wantsPhotos = requestedPhotos(text) || conversation.photoRequested;
-  const paymentStage = purchaseStage(text);
-  conversation.photoRequested = wantsPhotos;
-  conversation.paymentStage = paymentStage || conversation.paymentStage;
   conversation.messages = [...conversation.messages, { role: 'user', text, at: new Date().toISOString() }].slice(-8);
+  const { reply, completedNow } = advanceCallnovaLead(conversation, text);
 
-  const isGreeting = /^(selam|slm|merhaba|sa|selamlar|hey)[!?. ]*$/iu.test(text.trim());
-  const reply = isGreeting
-    ? welcomeMessage
-    : await createReply(conversation.messages, wantsPhotos, conversation.contact, findSizeSuggestion(text));
-  const needsTeamFollowUp = reply.includes('[EKIP_BILDIRIMI]');
-  if (needsTeamFollowUp) {
-    reply = reply.replace(/\s*\[EKIP_BILDIRIMI\]\s*/g, ' ').trim();
-    if (!/ekibimiz|ekip arkadaşlarımız|geri dönüş/i.test(reply)) {
-      reply = `${reply} Ekibimiz konuyu kontrol edip size geri dönüş sağlayacak. 📩`;
-    }
-    conversation.teamFollowupNotifications ??= 0;
-    if (conversation.teamFollowupNotifications < 2) {
-      const profile = await getInstagramProfile(senderId).catch(() => ({}));
-      await saveLead({
-        instagramUserId: senderId,
-        instagramUsername: profile.username || conversation.instagramUsername || '',
-        name: conversation.contact.name || '',
-        phone: conversation.contact.phone || '',
-        source: 'instagram_dm',
-        requested: 'human_followup',
-        status: 'human_followup',
-        issue: text,
-        createdAt: new Date().toISOString()
-      });
-      conversation.instagramUsername = profile.username || conversation.instagramUsername || '';
-      conversation.teamFollowupNotifications += 1;
-    }
-  }
-  conversation.messages = [...conversation.messages, { role: 'assistant', text: reply, at: new Date().toISOString() }].slice(-8);
-
-  const leadReason = conversation.paymentStage || (wantsPhotos ? 'photo_request' : null);
-  conversation.savedLeadReasons ??= [];
-  if (leadReason && conversation.contact.name && conversation.contact.phone && !conversation.savedLeadReasons.includes(leadReason)) {
+  if (completedNow && !conversation.callnovaLead.saved) {
+    const profile = await getInstagramProfile(senderId).catch(() => ({}));
     await saveLead({
       instagramUserId: senderId,
-      name: conversation.contact.name,
-      phone: conversation.contact.phone,
-      source: 'instagram_dm',
-      requested: leadReason,
-      status: conversation.paymentStage || 'lead_open',
+      instagramUsername: profile.username || '',
+      name: '',
+      phone: conversation.callnovaLead.phone,
+      source: 'callnova_instagram_dm',
+      requested: 'advertising_consultation',
+      status: 'callnova_lead_ready',
+      issue: `Sektör: ${conversation.callnovaLead.sector} | Şehir: ${conversation.callnovaLead.city} | Reklam hesabı: @${conversation.callnovaLead.instagramAccount}`,
       createdAt: new Date().toISOString()
     });
-    conversation.savedLeadReasons.push(leadReason);
+    conversation.callnovaLead.saved = true;
   }
 
+  if (reply) conversation.messages = [...conversation.messages, { role: 'assistant', text: reply, at: new Date().toISOString() }].slice(-8);
   await saveConversation(senderId, conversation);
+  if (!reply) {
+    console.log(`Lead tamamlandı, ek yanıt gönderilmedi: ${senderId}`);
+    return;
+  }
   await sendBotMessage(senderId, reply);
   console.log(`DM yanıtlandı: ${senderId}`);
 }
@@ -208,7 +176,7 @@ async function queueCommentPrivateReply(commentId, commenterId, commentText = ''
     commentReplyTimestamps.push(now);
     Promise.all([
       sendInstagramCommentReply(commentId, 'DM’den bilgi verilmiştir. ✨'),
-      sendInstagramCommentPrivateReply(commentId, commentWelcomeMessage)
+      sendInstagramCommentPrivateReply(commentId, 'Merhaba, reklam hizmeti için DM üzerinden bilgi paylaşabilirsiniz.')
     ])
       .then(() => rememberHandledCommentId(commentId))
       .catch(console.error);
@@ -219,13 +187,13 @@ async function queueCommentPrivateReply(commentId, commenterId, commentText = ''
 const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host}`);
   if (request.method === 'GET' && url.pathname === '/privacy-policy') {
-    return sendHtml(response, 'Gizlilik Politikası', `<p>Son güncelleme: 15 Eylül 2026</p><p>Zarafet Takii, Instagram üzerinden ürün sorularını yanıtlamak ve müşteri talebini yönetmek için otomatik yanıt sistemi kullanır.</p><h2>İşlediğimiz bilgiler</h2><p>Instagram kullanıcı kimliği, gönderilen mesajlar ve müşterinin görsel talebi sırasında gönüllü olarak paylaştığı ad soyad ile telefon numarası işlenebilir.</p><h2>Kullanım amacı</h2><p>Bilgiler, ürün sorularını yanıtlamak, ölçü önerisi sunmak, görsel talebini WhatsApp üzerinden takip etmek ve müşteri hizmeti sağlamak için kullanılır.</p><h2>Paylaşım ve saklama</h2><p>Mesaj yanıtları OpenAI hizmetiyle oluşturulabilir. Görsel isteyen müşterilerin iletişim bilgileri, müşteri takibi amacıyla yetkili ekip ve kullanılan CRM sistemiyle paylaşılabilir.</p><h2>Haklar ve iletişim</h2><p>Bilgi talebi, düzeltme veya silme isteği için <a href="mailto:zarafettakiiletisim@gmail.com">zarafettakiiletisim@gmail.com</a> adresinden bize ulaşabilirsiniz.</p><p><a href="/data-deletion">Veri silme talimatları</a> · <a href="/terms">Kullanım koşulları</a></p>`);
+    return sendHtml(response, 'Gizlilik Politikası', `<p>Son güncelleme: 16 Ekim 2026</p><p>CallNova, Instagram üzerinden reklam hizmeti hakkında bilgi isteyen işletmelerin talebini yönetmek için otomatik yanıt sistemi kullanır.</p><h2>İşlediğimiz bilgiler</h2><p>Instagram kullanıcı kimliği, gönderilen mesajlar, işletme sektörü, şehir, reklam hesabı ve gönüllü olarak paylaşılan telefon numarası işlenebilir.</p><h2>Kullanım amacı</h2><p>Bilgiler, reklam hizmeti talebini kaydetmek ve yetkili ekibin geri dönüş sağlaması amacıyla kullanılır.</p><h2>Paylaşım ve saklama</h2><p>İletişim bilgileri, müşteri takibi amacıyla yetkili ekip ve kullanılan CRM sistemiyle paylaşılabilir.</p><h2>Haklar ve iletişim</h2><p>Bilgi talebi, düzeltme veya silme isteği için CallNova ile Instagram üzerinden iletişime geçebilirsiniz.</p><p><a href="/data-deletion">Veri silme talimatları</a> · <a href="/terms">Kullanım koşulları</a></p>`);
   }
   if (request.method === 'GET' && url.pathname === '/data-deletion') {
-    return sendHtml(response, 'Veri Silme Talimatları', `<p>Zarafet Takii ile paylaştığınız kişisel verilerin silinmesini istemek için <a href="mailto:zarafettakiiletisim@gmail.com?subject=Veri%20Silme%20Talebi">zarafettakiiletisim@gmail.com</a> adresine “Veri Silme Talebi” konulu bir e-posta gönderin.</p><p>E-postada Instagram kullanıcı adınızı ve silinmesini istediğiniz iletişim bilgisini belirtin. Kimlik doğrulamasından sonra talep en geç 30 gün içinde sonuçlandırılır.</p>`);
+    return sendHtml(response, 'Veri Silme Talimatları', `<p>CallNova ile paylaştığınız kişisel verilerin silinmesini istemek için Instagram üzerinden “Veri Silme Talebi” başlıklı mesaj gönderin.</p><p>Mesajda Instagram kullanıcı adınızı ve silinmesini istediğiniz iletişim bilgisini belirtin. Kimlik doğrulamasından sonra talep en geç 30 gün içinde sonuçlandırılır.</p>`);
   }
   if (request.method === 'GET' && url.pathname === '/terms') {
-    return sendHtml(response, 'Kullanım Koşulları', `<p>Zarafet Takii Instagram yanıt sistemi ürün bilgisi ve müşteri hizmeti desteği sunar. Otomatik yanıtlar bilgi amaçlıdır; ürün stok durumu, teslimat ve nihai sipariş bilgileri ekip tarafından teyit edilir.</p><p>Hizmeti kullanarak Instagram ve Meta kurallarına uygun davranmayı kabul edersiniz.</p><p>İletişim: <a href="mailto:zarafettakiiletisim@gmail.com">zarafettakiiletisim@gmail.com</a></p>`);
+    return sendHtml(response, 'Kullanım Koşulları', `<p>CallNova Instagram yanıt sistemi reklam hizmeti talebini toplar ve ekibin geri dönüş sürecini başlatır. Otomatik yanıtlar bilgi amaçlıdır; nihai hizmet kapsamı ekip tarafından teyit edilir.</p><p>Hizmeti kullanarak Instagram ve Meta kurallarına uygun davranmayı kabul edersiniz.</p><p>İletişim: CallNova Instagram hesabı.</p>`);
   }
   if (request.method === 'GET' && url.pathname === '/health') {
     response.writeHead(200, { 'content-type': 'application/json' });

@@ -30,7 +30,8 @@ export function leadEmailContent(lead) {
   const statusLabels = {
     order_intent: 'Sipariş niyeti',
     payment_pending: 'Ödeme / IBAN talebi',
-    receipt_reported: 'Dekont bildirildi'
+    receipt_reported: 'Dekont bildirildi',
+    callnova_lead_ready: 'Yeni reklam görüşmesi talebi'
   };
   return {
     subject: `CallNova satış bildirimi: ${statusLabels[lead.status] || 'Yeni müşteri'}`,

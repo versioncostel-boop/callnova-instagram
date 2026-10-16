@@ -31,7 +31,6 @@ export const config = {
 
 export function assertRuntimeConfig() {
   const required = [
-    ['GEMINI_API_KEY, GROQ_API_KEY, OPENAI_API_KEY veya NVIDIA_API_KEY', config.geminiApiKey || config.groqApiKey || config.openAiApiKey || config.nvidiaApiKey],
     ['META_VERIFY_TOKEN', config.metaVerifyToken],
     ['META_APP_SECRET', config.metaAppSecret],
     ['INSTAGRAM_PAGE_ACCESS_TOKEN', config.instagramAccessToken]
