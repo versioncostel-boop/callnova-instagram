@@ -2,6 +2,20 @@ import { config } from './config.js';
 import { sendLeadNotification } from './email.js';
 import { queueLead } from './store.js';
 
+export function toCrmLeadPayload(lead) {
+  return {
+    instagramUserId: lead.instagramUserId,
+    instagramUsername: lead.instagramUsername || '',
+    phone: lead.phone,
+    sector: lead.sector,
+    city: lead.city,
+    instagramAccount: lead.instagramAccount,
+    monthlyAdBudget: lead.monthlyAdBudget,
+    source: 'callnova_instagram_dm',
+    createdAt: lead.createdAt
+  };
+}
+
 export async function saveLead(lead) {
   await queueLead(lead);
   console.log(`CRM kaydı anında yerel kuyruğa düştü: ${lead.instagramUserId}`);
@@ -12,9 +26,9 @@ export async function saveLead(lead) {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          ...(config.crmWebhookBearerToken ? { authorization: `Bearer ${config.crmWebhookBearerToken}` } : {})
+          ...(config.crmWebhookSecret ? { 'x-crm-webhook-secret': config.crmWebhookSecret } : {})
         },
-        body: JSON.stringify(lead),
+        body: JSON.stringify(toCrmLeadPayload(lead)),
         signal: AbortSignal.timeout(8_000)
       });
       if (!response.ok) throw new Error(`CRM isteği başarısız: ${response.status}`);
