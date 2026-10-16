@@ -64,13 +64,18 @@ export async function interpretCallnovaMessage(conversation, text, { settings = 
 
 export async function createCallnovaTurn(conversation, text, { interpret = interpretCallnovaMessage } = {}) {
   const stage = conversation.callnovaLead?.stage || 'initial';
+  const prefersText = stage === 'phone' && /telefon vermeden|numara vermeden|(?:telefon|numara).*istemiyorum|buradan konus|buradan konuş|yazisarak|yazışarak/iu.test(text);
+  if (prefersText) conversation.callnovaLead.contactPreference = 'text';
   // Complete mobile numbers never need a model call or disclosure to a provider.
   if (stage === 'phone' && normalizeTurkishMobile(text) && !isQuestion(text)) return advanceCallnovaLead(conversation, text);
   if (stage === 'initial' && /^(merhaba|selam|slm|sa)[!.\s]*$/iu.test(text.trim())) return advanceCallnovaLead(conversation, text);
 
   let interpretation = null;
   try { interpretation = await interpret(conversation, text); } catch { /* Keep responding during provider failures. */ }
-  if (!interpretation) return advanceCallnovaLead(conversation, text);
+  if (!interpretation) {
+    if (prefersText) return { reply:'Telefon görüşmesi için istemiştik; dilerseniz merak ettiğiniz konuyu buradan yazabilirsiniz.', completedNow:false };
+    return advanceCallnovaLead(conversation, text);
+  }
 
   if (interpretation.kind === 'answer' && !isQuestion(text) && stage !== 'completed') return advanceCallnovaLead(conversation, text);
   if (interpretation.kind === 'answer') return advanceCallnovaLead(conversation, text);
@@ -82,6 +87,7 @@ export async function createCallnovaTurn(conversation, text, { interpret = inter
     if (clause && !isQuestion(clause)) result = advanceCallnovaLead(conversation, interpretation.answerValue);
   }
   const currentStage = conversation.callnovaLead?.stage || stage;
-  const prompt = result.completedNow ? result.reply : currentStage === 'completed' ? '' : stagePrompt(currentStage);
+  const textOnly = currentStage === 'phone' && conversation.callnovaLead?.contactPreference === 'text';
+  const prompt = result.completedNow ? result.reply : currentStage === 'completed' || textOnly ? '' : stagePrompt(currentStage);
   return { ...result, reply: `${interpretation.answer}${prompt ? ` ${prompt}` : ''}`.trim() || callnovaFollowUp(text) };
 }

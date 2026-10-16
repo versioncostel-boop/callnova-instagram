@@ -49,6 +49,20 @@ test('telefon doğrudan doğrulanır ve modele gönderilmez', async () => {
   assert.equal(result.completedNow, true);
 });
 
+test('telefon paylaşmak istemeyen müşteriye tekrar numara dayatmaz', async () => {
+  const conversation = { callnovaLead:{ stage:'phone' } };
+  const result = await createCallnovaTurn(conversation, 'Telefon vermeden buradan konuşsak', {
+    interpret:async () => ({kind:'question', answer:'Dilerseniz buradan da bilgi alabilirsiniz.', answerValue:null})
+  });
+  assert.doesNotMatch(result.reply, /telefon numaranızı/);
+  assert.equal(conversation.callnovaLead.stage, 'phone');
+  assert.equal(conversation.callnovaLead.contactPreference, 'text');
+  const later = await createCallnovaTurn(conversation, 'Sözleşmeniz var mı?', {
+    interpret:async () => ({kind:'question', answer:'Sözleşme koşulları görüşmede netleşir.', answerValue:null})
+  });
+  assert.doesNotMatch(later.reply, /telefon numaranızı/);
+});
+
 test('model taşıması bağlamı kullanır, telefonları gizler ve store false gönderir', async () => {
   const conversation = { callnovaLead:{ stage:'phone' }, messages:[{role:'user',text:'05321112233'}] };
   const result = await interpretCallnovaMessage(conversation, 'Neden telefon gerekiyor?', {
