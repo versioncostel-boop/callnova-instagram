@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import { config, assertRuntimeConfig } from './config.js';
+import { normalizeInstagramEvent } from './instagram-event.js';
 import { createCallnovaTurn } from './callnova-dialogue.js';
 import { saveLead } from './crm.js';
 import { sendDailyReport } from './email.js';
@@ -18,7 +19,7 @@ const followUpDelayMs = 10_000;
 const commentReplyDelayMs = 10_000;
 const maxCommentRepliesPerHour = 30;
 const commentReplyWindowMs = 60 * 60 * 1000;
-const duplicateMessageWindowMs = 30 * 60 * 1000;
+const duplicateMessageWindowMs = 2_000;
 const botEchoWindowMs = 2 * 60 * 1000;
 
 function sendHtml(response, title, content) {
@@ -130,13 +131,13 @@ function acceptIncomingMessage(event) {
     console.log('Bot pasif: gelen DM yanıtlanmadı.');
     return;
   }
-  const message = event.message || event.value?.message;
-  const senderId = event.sender?.id || event.value?.sender?.id || event.value?.from?.id || event.value?.sender_id;
-  const messageId = message?.mid || message?.id || event.message_id;
-  const isEcho = Boolean(event.is_echo || event.value?.is_echo || event.message?.is_echo || event.value?.message?.is_echo);
-  if (!message?.text) return;
+  const { senderId, messageId, isEcho, text, kind } = normalizeInstagramEvent(event);
+  if (!text || !senderId) {
+    console.log(`DM olayı atlandı: ${!senderId ? 'gönderen eksik' : kind}`);
+    return;
+  }
   if (isEcho || senderId === config.instagramAccountId) {
-    handleOutgoingEcho(event, message.text);
+    handleOutgoingEcho(event, text);
     return;
   }
   if (messageId && handledMessageIds.has(messageId)) return;
@@ -145,9 +146,9 @@ function acceptIncomingMessage(event) {
     if (handledMessageIds.size > 5000) handledMessageIds.clear();
   }
   const now = Date.now();
-  const fingerprint = `${senderId}:${message.text.trim().toLocaleLowerCase('tr-TR')}`;
+  const fingerprint = `${senderId}:${text.toLocaleLowerCase('tr-TR')}`;
   const previousAt = recentInboundFingerprints.get(fingerprint);
-  if (previousAt && now - previousAt < duplicateMessageWindowMs) {
+  if (!messageId && previousAt && now - previousAt < duplicateMessageWindowMs) {
     console.log(`Tekrarlanan müşteri mesajı yok sayıldı: ${senderId}`);
     return;
   }
@@ -155,7 +156,7 @@ function acceptIncomingMessage(event) {
   for (const [key, timestamp] of recentInboundFingerprints) {
     if (now - timestamp > duplicateMessageWindowMs) recentInboundFingerprints.delete(key);
   }
-  queueIncomingMessage(senderId, message.text).catch(console.error);
+  queueIncomingMessage(senderId, text).catch(console.error);
 }
 
 async function queueCommentPrivateReply(commentId, commenterId, commentText = '') {
@@ -238,7 +239,7 @@ const server = createServer(async (request, response) => {
         if (change.field === 'comments' && change.value?.id) {
           queueCommentPrivateReply(change.value.id, change.value.from?.id, change.value.text || '').catch(console.error);
         }
-        if (change.field === 'messages') acceptIncomingMessage(change);
+        if (['messages', 'messaging_postbacks'].includes(change.field)) acceptIncomingMessage(change);
       }
     }
     return;
