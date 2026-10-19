@@ -12,7 +12,7 @@ Bunları uydurma; sorunun hangi kısmının görüşmede netleşeceğini açık 
 Genel reklam kavramlarını doğru ve basit açıkla; işletmeye özgü performans, maliyet veya süre tahmin etme.
 Müşteri itirazını/tereddüdünü yanıtla; örneğin telefon istemezse neden istendiğini açıklayıp yazışarak ek bilgi verebileceğini belirt.
 Önce gerçek soruyu cevapla. Önceki form sorusunu körü körüne açıklayıp müşterinin asıl sorusunu geçiştirme.
-Yanıt en fazla iki kısa cümle ve 280 karakter olsun. Sonuna form sorusu EKLEME; bunu uygulama ekler.
+Yanıt tek kısa cümle ve en fazla 180 karakter olsun. Uzun ajans tanıtımı veya hizmet listesi yazma. Sonuna form sorusu EKLEME; bunu uygulama ekler.
 Mesajı yanıt, soru/itiraz veya diğer olarak sınıflandır. Yazım hatalarını anla. Soru işareti olmasa da soru olabilir.
 Sadece JSON döndür: {"kind":"answer|question|other","answer":"kısa cevap","answerValue":null}.
 kind=answer yalnız mevcut form sorusuna açık cevap verilmişse; bu durumda answer boş olsun.
@@ -26,7 +26,7 @@ export function parseDialogue(raw, text) {
     const value = JSON.parse(raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''));
     if (!['answer', 'question', 'other'].includes(value.kind)) return null;
     const answer = typeof value.answer === 'string' ? value.answer.trim() : '';
-    if (value.kind !== 'answer' && (!answer || answer.length > 320 || /https?:\/\/|\b449\b|shopier|bilezik/i.test(answer))) return null;
+    if (value.kind !== 'answer' && (!answer || answer.length > 180 || /https?:\/\/|\b449\b|shopier|bilezik/i.test(answer))) return null;
     if (/[?？]/.test(answer)) return null; // The application owns the next question.
     const answerValue = typeof value.answerValue === 'string' && value.answerValue.trim()
       && text.includes(value.answerValue.trim()) ? value.answerValue.trim() : null;
@@ -64,6 +64,20 @@ export async function interpretCallnovaMessage(conversation, text, { settings = 
 
 export async function createCallnovaTurn(conversation, text, { interpret = interpretCallnovaMessage } = {}) {
   const stage = conversation.callnovaLead?.stage || 'initial';
+  const opener = text.toLocaleLowerCase('tr-TR').replace(/[çğıöşü]/g, char => ({ç:'c',ğ:'g',ı:'i',ö:'o',ş:'s',ü:'u'})[char])
+    .replace(/[!?.,…]/g, ' ').replace(/\s+/g, ' ').trim().replace(/^(merhaba|selam|selamlar)\s+/, '');
+  if (/^(sizinle |sizle )?nasil calisabiliriz$|^(sizinle |sizle )?calismak istiyorum$/.test(opener)) {
+    const lead = conversation.callnovaLead ||= { stage:'initial' };
+    if (stage === 'completed') return {reply:'Talebiniz alındı; detayları görüşmede netleştirebiliriz.',completedNow:false};
+    const fields = [['sector','sector'],['city','city'],['instagram','instagramAccount'],['budget','monthlyAdBudget'],['phone','phone']];
+    const start = Math.max(0, fields.findIndex(([name])=>name===stage));
+    const next = fields.slice(start).find(([,key])=>!lead[key]);
+    if (next) {
+      lead.stage=next[0];
+      return {reply:stagePrompt(lead.stage),completedNow:false};
+    }
+    return {reply:'Talebiniz alındı; detayları görüşmede netleştirebiliriz.',completedNow:false};
+  }
   const prefersText = stage === 'phone' && /telefon vermeden|numara vermeden|(?:telefon|numara).*istemiyorum|buradan konus|buradan konuş|yazisarak|yazışarak/iu.test(text);
   if (prefersText) conversation.callnovaLead.contactPreference = 'text';
   // Complete mobile numbers never need a model call or disclosure to a provider.

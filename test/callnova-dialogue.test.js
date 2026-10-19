@@ -3,6 +3,37 @@ import assert from 'node:assert/strict';
 import { createCallnovaTurn, interpretCallnovaMessage, parseDialogue } from '../src/callnova-dialogue.js';
 import { callnovaReplies } from '../src/callnova.js';
 
+test('standart çalışma sorusu modele gitmeden tek kısa soruyla karşılanır', async () => {
+  for(const text of ['Sizinle nasıl çalışabiliriz?', 'sizinle nasil calisabiliriz', 'Merhaba, sizinle nasıl çalışabiliriz?', 'Nasıl çalışabiliriz?', 'Sizle çalışmak istiyorum']) {
+    const conversation = {};
+    const result = await createCallnovaTurn(conversation,text,{interpret:async()=>assert.fail('Opener must not use model')});
+    assert.equal(result.reply,callnovaReplies.askSector);
+    assert.equal(conversation.callnovaLead.stage,'sector');
+    assert.ok(result.reply.length<80);
+  }
+});
+
+test('çalışma sorusu bilinen bilgileri tekrar sormaz veya soru metnini sektör diye kaydetmez', async () => {
+  for(const stage of ['initial','sector','city']) {
+    const conversation={callnovaLead:{stage,sector:'Giyim',city:'İzmir'}};
+    const result=await createCallnovaTurn(conversation,'Sizinle nasıl çalışabiliriz?',{interpret:async()=>assert.fail('No model')});
+    assert.equal(result.reply,callnovaReplies.askInstagram);
+    assert.equal(conversation.callnovaLead.sector,'Giyim');
+    assert.equal(conversation.callnovaLead.city,'İzmir');
+  }
+});
+
+test('tamamlanmış görüşmede çalışma sorusu formu yeniden başlatmaz', async () => {
+  const conversation={callnovaLead:{stage:'completed'}};
+  const result=await createCallnovaTurn(conversation,'Sizinle nasıl çalışabiliriz?',{interpret:async()=>assert.fail('No model')});
+  assert.equal(conversation.callnovaLead.stage,'completed');
+  assert.ok(result.reply.length<100);
+});
+
+test('uzun model tanıtımı kabul edilmez',()=>{
+  assert.equal(parseDialogue(JSON.stringify({kind:'question',answer:'Uzun tanıtım '.repeat(30),answerValue:null}),'Bilgi'),null);
+});
+
 test('her aşamada gerçek soruyu cevaplayıp aynı eksik bilgiye döner', async () => {
   for (const stage of ['sector', 'city', 'instagram', 'budget', 'phone', 'completed']) {
     const conversation = { callnovaLead:{ stage } };
